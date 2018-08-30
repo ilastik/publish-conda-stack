@@ -96,6 +96,15 @@ recipe-specs:
       environment:
         DO_NOT_BUILD_WITH_CXX11_ABI: 1  # [linux]
 
+    # we need pyfeast to run the ilastikrag tests
+    - name: pyfeast
+      build-on:
+        - linux
+        - osx
+      recipe-repo: https://github.com/ilastik/ilastik-build-conda
+      tag: master
+      recipe-subdir: pyfeast
+
     - name: ilastikrag
       recipe-repo: https://github.com/ilastik/ilastikrag
       tag: master
