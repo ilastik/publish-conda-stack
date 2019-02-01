@@ -85,14 +85,14 @@ def parse_specs(args):
 
     # Read the 'shared-config' section
     shared_config = specs_file_contents["shared-config"]
-    expected_shared_config_keys = [
+    required_shared_config_keys = [
         "source-channels",
         "destination-channel",
         "repo-cache-dir",
     ]
-    assert set(shared_config.keys()) == set(
-        expected_shared_config_keys
-    ), f"shared-config section is missing expected keys or has too many.  Expected: {expected_shared_config_keys}"
+    assert all(
+        k in shared_config for k in required_shared_config_keys
+    ), f"shared-config section is missing expected keys.  Expected: {required_shared_config_keys}"
 
     # Convenience member
     shared_config["source-channel-string"] = " ".join(
