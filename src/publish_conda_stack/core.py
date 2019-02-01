@@ -427,7 +427,7 @@ def get_rendered_version(
     if variant_config is not None:
         render_cmd.append(f" -m {variant_config}")
 
-    logger.info("\t" + render_cmd)
+    logger.info("\t" + " ".join(render_cmd))
     rendered_meta_text = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
@@ -500,7 +500,7 @@ def build_recipe(
     if variant_config is not None:
         build_cmd.append(f" -m {variant_config}")
 
-    logger.info("\t" + build_cmd)
+    logger.info("\t" + " ".join(build_cmd))
     try:
         subprocess.check_call(build_cmd, env=build_environment, shell=True)
     except subprocess.CalledProcessError as ex:
