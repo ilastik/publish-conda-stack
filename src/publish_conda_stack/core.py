@@ -90,7 +90,7 @@ def main():
     # Read the 'shared-config' section
     shared_config = specs_file_contents["shared-config"]
     expected_shared_config_keys = [
-        "pinned-versions",
+        "master-conda-build-config",
         "source-channels",
         "destination-channel",
         "repo-cache-dir",
@@ -100,7 +100,9 @@ def main():
     ), f"shared-config section is missing expected keys or has too many.  Expected: {expected_shared_config_keys}"
 
     # make path to config file absolute:
-    pin_specs_path = os.path.abspath(shared_config["pinned-versions"])
+    master_conda_build_config = os.path.abspath(
+        shared_config["master-conda-build-config"]
+    )
 
     # Convenience member
     shared_config["source-channel-string"] = " ".join(
@@ -140,7 +142,7 @@ def main():
     for spec in selected_recipe_specs:
         try:
             status = build_and_upload_recipe(
-                spec, shared_config, pin_specs_path, conda_bld_config
+                spec, shared_config, master_conda_build_config, conda_bld_config
             )
         except Exception as e:
             result["errors"].append({"spec": spec, "error": e})

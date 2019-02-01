@@ -41,7 +41,9 @@ shared-config:
   numpy: '1.13'
   # Path to store git repositories containing recipes. Relative to this yaml file's directory.
   repo-cache-dir: ./repo-cache
-  # Channels to check for dependencies of the built packages
+  # Optional path to master conda_build_config file to unify build-environment and package pins across recipes
+  master-conda-build-config: ./ilastik-pins.yaml
+  # Channels to check for dependencies of the built package
   source-channels:
     - ilastik-forge
     - conda-forge
@@ -72,19 +74,28 @@ recipe-specs:
           ...
 ```
 
-#### Dependency pins
+#### Optional Master conda-build-config
+
+You can add a master `conda_build_config.yaml` file that will be passed to `conda-build`, hence, it supports all syntax as described in the [`conda-build` docs](https://docs.conda.io/projects/conda-build/en/latest/source/variants.html).
+This field is optional.
+If the field is left blank, it will be simply ignored.
+
+Example file:
 
 ```yaml
+- python: 3.6
 
+pin_run_as_build:
+  python: x.x
 ```
 
 ### Building
 
 ```bash
 # on Linux and Windows:
-python build-recipes.py ilastik-recipe-specs.yaml
+publish-conda-stack ilastik-recipe-specs.yaml
 # on Mac:
-MACOSX_DEPLOYMENT_TARGET=10.9 python build-recipes.py ilastik-recipe-specs.yaml
+MACOSX_DEPLOYMENT_TARGET=10.9 publish-conda-stack ilastik-recipe-specs.yaml
 ```
 
 The `build-recipes.py` script parses the packages from `ilastik-recipe-specs.yaml`, and for each package checks whether that version is already available on the `ilastik-forge` channel. If that is not the case, it will build the package and upload it to `ilastik-forge`. By default, the script **assumes you have both solvers** and wants to build all packages. If you do not have CPLEX or Gurobi, comment out the sections near the end that have `cplex` or `gurobi` in their name, as well as the `ilastik-dependencies` package as described below.
