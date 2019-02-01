@@ -128,6 +128,7 @@ def main():
     result = {
         "found": [],
         "built": [],
+        "errors": [],
         "start_time": start_time.isoformat(timespec="seconds"),
         "args": vars(args),
     }
@@ -137,25 +138,35 @@ def main():
         script_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
     )
     for spec in selected_recipe_specs:
-        status = build_and_upload_recipe(
-            spec, shared_config, pin_specs_path, conda_bld_config
-        )
+        try:
+            status = build_and_upload_recipe(
+                spec, shared_config, pin_specs_path, conda_bld_config
+            )
+        except Exception as e:
+            result["errors"].append({"spec": spec, "error": e})
+            write_result(result_file, result)
+            raise e
+
         for k, v in status.items():
             result[k].append(v)
-        with open(result_file, "w") as f:
-            yaml.dump(result, f, default_flow_style=False)
+        write_result(result_file, result)
 
     end_time = datetime.datetime.now()
     result["end_time"] = end_time.isoformat(timespec="seconds")
     result["duration"] = str(end_time - start_time)
-    with open(result_file, "w") as f:
-        yaml.dump(result, f, default_flow_style=False)
+    write_result(result_file, result)
 
     print("--------")
     print(f"DONE, Result written to {result_file}")
     print("--------")
     print("Summary:")
     print(yaml.dump(result, default_flow_style=False))
+
+
+def write_result(result_file_name, result):
+    result["last_updated"] = datetime.datetime.now().isoformat(timespec="seconds")
+    with open(result_file_name, "w") as f:
+        yaml.dump(result, f, default_flow_style=False)
 
 
 def print_recipe_list(recipe_specs):
