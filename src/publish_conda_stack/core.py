@@ -117,7 +117,7 @@ def parse_specs(args):
     master_conda_build_config = None
     if (
         "master-conda-build-config" in shared_config
-        and shared_config["master_conda_build_config"] != ""
+        and shared_config["master-conda-build-config"] != ""
     ):
         # make path to config file absolute:
         master_conda_build_config = os.path.abspath(
