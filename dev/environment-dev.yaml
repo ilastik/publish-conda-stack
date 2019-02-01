@@ -7,6 +7,7 @@ dependencies:
   - black
   - bumpversion
   - conda-build
+  - conda-verify
   - pre_commit
   - pytest
   - pytest-mock
