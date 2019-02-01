@@ -3,29 +3,30 @@
 from os.path import basename, splitext, abspath, exists, dirname, normpath
 from pathlib import Path
 import argparse
+import conda_build.api
 import datetime
 import json
+import logging
 import os
-import platform
 import subprocess
 import sys
 import tempfile
 import yaml
+
+
+logger = logging.getLogger()
+logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
 
 try:
     import argcomplete
     from argcomplete.completers import FilesCompleter
 
     ENABLE_TAB_COMPLETION = True
-except:
+except Exception as e:
     # See --help text for instructions.
     ENABLE_TAB_COMPLETION = False
+    logger.debug(f"Tab completion not available: {e}")
 
-
-# See _init_globals(), below
-CONDA_PLATFORM = None
-PLATFORM_STR = None
-BUILD_PKG_DIR = None
 
 # Disable git pager for log messages, etc.
 os.environ["GIT_PAGER"] = ""
@@ -82,7 +83,7 @@ def parse_cmdline_args():
 def main():
     start_time = datetime.datetime.now()
     args = parse_cmdline_args()
-    _init_globals()
+    conda_bld_config = conda_build.api.get_or_merge_config(conda_build.api.Config())
 
     specs_file_contents = yaml.load(open(args.recipe_specs_path, "r"))
 
@@ -127,6 +128,7 @@ def main():
     result = {
         "found": [],
         "built": [],
+        "errors": [],
         "start_time": start_time.isoformat(timespec="seconds"),
         "args": vars(args),
     }
@@ -136,17 +138,23 @@ def main():
         script_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
     )
     for spec in selected_recipe_specs:
-        status = build_and_upload_recipe(spec, shared_config, pin_specs_path)
+        try:
+            status = build_and_upload_recipe(
+                spec, shared_config, pin_specs_path, conda_bld_config
+            )
+        except Exception as e:
+            result["errors"].append({"spec": spec, "error": e})
+            write_result(result_file, result)
+            raise e
+
         for k, v in status.items():
             result[k].append(v)
-        with open(result_file, "w") as f:
-            yaml.dump(result, f, default_flow_style=False)
+        write_result(result_file, result)
 
     end_time = datetime.datetime.now()
     result["end_time"] = end_time.isoformat(timespec="seconds")
     result["duration"] = str(end_time - start_time)
-    with open(result_file, "w") as f:
-        yaml.dump(result, f, default_flow_style=False)
+    write_result(result_file, result)
 
     print("--------")
     print(f"DONE, Result written to {result_file}")
@@ -155,32 +163,18 @@ def main():
     print(yaml.dump(result, default_flow_style=False))
 
 
-def _init_globals():
-    """
-    We initialize globals in this function, AFTER argcomplete is used.
-    (Using subprocess interferes with argcomplete.)
-    """
-    global CONDA_PLATFORM
-    global BUILD_PKG_DIR
-    global PLATFORM_STR
-
-    CONDA_PLATFORM = {"Darwin": "osx-64", "Linux": "linux-64", "Windows": "win-64"}[
-        platform.system()
-    ]
-    PLATFORM_STR = CONDA_PLATFORM.replace("-64", "")
-
-    # There's probably some proper way to obtain BUILD_PKG_DIR
-    # via the conda.config python API, but I can't figure it out.
-    CONDA_ROOT = Path(
-        subprocess.check_output("conda info --root", shell=True).rstrip().decode()
-    )
-    BUILD_PKG_DIR = CONDA_ROOT / "conda-bld"
+def write_result(result_file_name, result):
+    result["last_updated"] = datetime.datetime.now().isoformat(timespec="seconds")
+    with open(result_file_name, "w") as f:
+        yaml.dump(result, f, default_flow_style=False)
 
 
 def print_recipe_list(recipe_specs):
     max_name = max(len(spec["name"]) for spec in recipe_specs)
     for spec in recipe_specs:
-        print(f"{spec['name']: <{max_name}} : {spec['recipe-repo']} ({spec['tag']})")
+        logger.info(
+            f"{spec['name']: <{max_name}} : {spec['recipe-repo']} ({spec['tag']})"
+        )
 
 
 def get_selected_specs(args, full_recipe_specs):
@@ -223,17 +217,19 @@ def get_selected_specs(args, full_recipe_specs):
     )
     filtered_names = [spec["name"] for spec in filtered_specs]
     if filtered_names != args.selected_recipes:
-        print(
+        logger.info(
             f"WARNING: Your recipe list was not given in the same order as in {args.recipe_specs_path}."
         )
-        print(
+        logger.info(
             f"         They will be processed in the following order: {', '.join(filtered_names)}"
         )
 
     return filtered_specs
 
 
-def build_and_upload_recipe(recipe_spec, shared_config, variant_config):
+def build_and_upload_recipe(
+    recipe_spec, shared_config, variant_config, conda_bld_config: conda_build.api.Config
+):
     """
     Given a recipe-spec dictionary, build and upload the recipe if
     it doesn't already exist on ilastik-forge.
@@ -261,8 +257,8 @@ def build_and_upload_recipe(recipe_spec, shared_config, variant_config):
     recipe_subdir = recipe_spec["recipe-subdir"]
     conda_build_flags = recipe_spec.get("conda-build-flags", "")
 
-    print("-------------------------------------------")
-    print(f"Processing {package_name}")
+    logger.info("-------------------------------------------")
+    logger.info(f"Processing {package_name}")
 
     # check whether we need to build the package on this OS at all
     if "build-on" in recipe_spec:
@@ -272,8 +268,10 @@ def build_and_upload_recipe(recipe_spec, shared_config, variant_config):
     else:
         platforms_to_build_on = ["win", "osx", "linux"]
 
+    PLATFORM_STR = conda_bld_config.platform
+
     if PLATFORM_STR not in platforms_to_build_on:
-        print(
+        logger.info(
             f"Not building {package_name} on platform {PLATFORM_STR}, only builds on {platforms_to_build_on}"
         )
         return {}
@@ -295,7 +293,9 @@ def build_and_upload_recipe(recipe_spec, shared_config, variant_config):
     recipe_version, recipe_build_string = get_rendered_version(
         package_name, recipe_subdir, build_environment, shared_config, variant_config
     )
-    print(f"Recipe version is: {package_name}-{recipe_version}-{recipe_build_string}")
+    logger.info(
+        f"Recipe version is: {package_name}-{recipe_version}-{recipe_build_string}"
+    )
 
     # Check our channel.  Did we already upload this version?
     package_info = {
@@ -306,7 +306,7 @@ def build_and_upload_recipe(recipe_spec, shared_config, variant_config):
     if check_already_exists(
         package_name, recipe_version, recipe_build_string, shared_config
     ):
-        print(
+        logger.info(
             f"Found {package_name}-{recipe_version}-{recipe_build_string} on {shared_config['destination-channel']}, skipping build."
         )
         ret_dict = {"found": package_info}
@@ -320,7 +320,13 @@ def build_and_upload_recipe(recipe_spec, shared_config, variant_config):
             shared_config,
             variant_config,
         )
-        upload_package(package_name, recipe_version, recipe_build_string, shared_config)
+        upload_package(
+            package_name,
+            recipe_version,
+            recipe_build_string,
+            shared_config,
+            conda_bld_config,
+        )
         ret_dict = {"built": package_info}
     return ret_dict
 
@@ -367,7 +373,7 @@ def checkout_recipe_repo(recipe_repo, tag):
 
             subprocess.check_call(f"git fetch {remote_name}", shell=True)
 
-        print(f"Checking out {tag} of {repo_name} into {cwd}...")
+        logger.info(f"Checking out {tag} of {repo_name} into {cwd}...")
         subprocess.check_call(f"git checkout {tag}", shell=True)
         subprocess.check_call(f"git pull --ff-only {remote_name} {tag}", shell=True)
         subprocess.check_call(f"git submodule update --init --recursive", shell=True)
@@ -377,8 +383,8 @@ def checkout_recipe_repo(recipe_repo, tag):
             "Double-check the repo url, or delete your repo cache and try again."
         )
 
-    print(f"Recipe checked out at tag: {tag}")
-    print("Most recent commit:")
+    logger.info(f"Recipe checked out at tag: {tag}")
+    logger.info("Most recent commit:")
     subprocess.call("git log -n1", shell=True)
     os.chdir(cwd)
 
@@ -395,7 +401,7 @@ def get_rendered_version(
     Returns
         tuple: recipe_version, recipe_build_string
     """
-    print(f"Rendering recipe in {recipe_subdir}...")
+    logger.info(f"Rendering recipe in {recipe_subdir}...")
     temp_meta_file = tempfile.NamedTemporaryFile(delete=False)
     temp_meta_file.close()
     render_cmd = (
@@ -405,7 +411,7 @@ def get_rendered_version(
         f" {shared_config['source-channel-string']}"
         f" --file {temp_meta_file.name}"
     )
-    print("\t" + render_cmd)
+    logger.info("\t" + render_cmd)
     rendered_meta_text = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
@@ -433,9 +439,9 @@ def check_already_exists(
     Check if the given package already exists on anaconda.org in the
     ilastik-forge channel with the given version and build string.
     """
-    print(f"Searching channel: {shared_config['destination-channel']}")
+    logger.info(f"Searching channel: {shared_config['destination-channel']}")
     search_cmd = f"conda search --json  --full-name --override-channels --channel={shared_config['destination-channel']} {package_name}"
-    print("\t" + search_cmd)
+    logger.info("\t" + search_cmd)
     try:
         search_results_text = subprocess.check_output(search_cmd, shell=True).decode()
     except Exception:
@@ -453,7 +459,7 @@ def check_already_exists(
             result["build"] == recipe_build_string
             and result["version"] == recipe_version
         ):
-            print("Found package!")
+            logger.info("Found package!")
             return True
     return False
 
@@ -469,38 +475,45 @@ def build_recipe(
     """
     Build the recipe.
     """
-    print(f"Building {package_name}")
+    logger.info(f"Building {package_name}")
     build_cmd = (
         f"conda build {build_flags}"
         f" -m {variant_config}"
         f" {shared_config['source-channel-string']}"
         f" {recipe_subdir}"
     )
-    print("\t" + build_cmd)
+    logger.info("\t" + build_cmd)
     try:
         subprocess.check_call(build_cmd, env=build_environment, shell=True)
     except subprocess.CalledProcessError as ex:
         sys.exit(f"Failed to build package: {package_name}")
 
 
-def upload_package(package_name, recipe_version, recipe_build_string, shared_config):
+def upload_package(
+    package_name,
+    recipe_version,
+    recipe_build_string,
+    shared_config,
+    conda_bld_config: conda_build.api.Config,
+):
     """
     Upload the package to the ilastik-forge channel.
     """
     pkg_file_name = f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2"
-
-    pkg_file_path = BUILD_PKG_DIR / CONDA_PLATFORM / pkg_file_name
+    BUILD_PKG_DIR = conda_bld_config.build_folder
+    CONDA_PLATFORM = f"{conda_bld_config.platform}-{conda_bld_config.arch}"
+    pkg_file_path = os.path.join(BUILD_PKG_DIR, CONDA_PLATFORM, pkg_file_name)
     if not os.path.exists(pkg_file_path):
         # Maybe it's a noarch package?
-        pkg_file_path = BUILD_PKG_DIR / "noarch" / pkg_file_name
+        pkg_file_path = os.path.join(BUILD_PKG_DIR, "noarch", pkg_file_name)
     if not os.path.exists(pkg_file_path):
         raise RuntimeError(f"Can't find built package: {pkg_file_name}")
 
     upload_cmd = (
         f"anaconda upload -u {shared_config['destination-channel']} {pkg_file_path}"
     )
-    print(f"Uploading {pkg_file_name}")
-    print(upload_cmd)
+    logger.info(f"Uploading {pkg_file_name}")
+    logger.info(upload_cmd)
     subprocess.check_call(upload_cmd, shell=True)
 
 
