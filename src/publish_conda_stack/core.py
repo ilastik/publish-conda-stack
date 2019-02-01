@@ -133,9 +133,9 @@ def main():
         "args": vars(args),
     }
 
-    script_path = os.path.abspath(os.path.split(__file__)[0])
+    current_path = os.path.abspath(os.getcwd())
     result_file = os.path.join(
-        script_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
+        current_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
     )
     for spec in selected_recipe_specs:
         try:
