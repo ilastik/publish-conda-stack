@@ -4,7 +4,7 @@ shared-config:
     source-channels:
         - ilastik-forge
         - conda-forge
-    destination-channel: ilastik-forge
+    destination-channel: kdominik
 
 # Some notes on the used environment variables:
 # * DO_NOT_BUILD_WITH_CXX11_ABI: Only applies to linux: should be 1 for all

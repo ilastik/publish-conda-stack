@@ -15,7 +15,7 @@ import yaml
 
 
 logger = logging.getLogger()
-logging.basicConfig(format="%(levelname)s:%(message)s", level=logging.INFO)
+logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
 
 try:
     import argcomplete
@@ -418,16 +418,16 @@ def get_rendered_version(
     logger.info(f"Rendering recipe in {recipe_subdir}...")
     temp_meta_file = tempfile.NamedTemporaryFile(delete=False)
     temp_meta_file.close()
-    render_cmd = [
-        f"conda render"
+    render_cmd = (
+        "conda render"
         f" {recipe_subdir}"
         f" {shared_config['source-channel-string']}"
         f" --file {temp_meta_file.name}"
-    ]
+    )
     if variant_config is not None:
-        render_cmd.append(f" -m {variant_config}")
+        render_cmd = render_cmd + f" -m {variant_config}"
 
-    logger.info("\t" + " ".join(render_cmd))
+    logger.info(render_cmd)
     rendered_meta_text = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
@@ -439,7 +439,8 @@ def get_rendered_version(
             f"Recipe for package '{package_name}' has unexpected name: '{meta['package']['name']}'"
         )
 
-    render_cmd += " --output"
+    render_cmd = render_cmd + " --output"
+    logger.info(render_cmd)
     rendered_filename = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
@@ -457,7 +458,7 @@ def check_already_exists(
     """
     logger.info(f"Searching channel: {shared_config['destination-channel']}")
     search_cmd = f"conda search --json  --full-name --override-channels --channel={shared_config['destination-channel']} {package_name}"
-    logger.info("\t" + search_cmd)
+    logger.info(search_cmd)
     try:
         search_results_text = subprocess.check_output(search_cmd, shell=True).decode()
     except Exception:
@@ -492,15 +493,15 @@ def build_recipe(
     Build the recipe.
     """
     logger.info(f"Building {package_name}")
-    build_cmd = [
+    build_cmd = (
         f"conda build {build_flags}"
         f" {shared_config['source-channel-string']}"
         f" {recipe_subdir}"
-    ]
+    )
     if variant_config is not None:
-        build_cmd.append(f" -m {variant_config}")
+        build_cmd = build_cmd + f" -m {variant_config}"
 
-    logger.info("\t" + " ".join(build_cmd))
+    logger.info(build_cmd)
     try:
         subprocess.check_call(build_cmd, env=build_environment, shell=True)
     except subprocess.CalledProcessError as ex:
