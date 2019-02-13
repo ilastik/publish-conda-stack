@@ -22,3 +22,10 @@ script:
   - pytest tests
   # test invocation of script
   - publish-conda-stack -h
+
+deploy:
+  - provider: script
+    script: anaconda -t $CONDA_UPLOAD_TOKEN upload $HOME/miniconda3/conda-bld/**/publish-conda-stack-*.tar.bz2 --label staging --label dev
+    on:
+      tags: true
+    skip_cleanup: true
