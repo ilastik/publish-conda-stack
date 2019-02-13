@@ -69,7 +69,12 @@ def parse_cmdline_args():
         default=[],
         help="Use label(s) when uploading package. Can be added multiple times.",
     )
-    parser.add_argument("--token", default=None, help="Token used for anaconda upload.")
+    parser.add_argument("--token", default="", help="Token used for anaconda upload.")
+    parser.add_argument(
+        "--logfile",
+        default="",
+        help="Use a different output for the log/summary yaml file.",
+    )
 
     if ENABLE_TAB_COMPLETION:
 
@@ -168,9 +173,12 @@ def main():
     }
 
     current_path = os.path.abspath(os.getcwd())
-    result_file = os.path.join(
-        current_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
-    )
+    if args.logfile == "":
+        result_file = os.path.join(
+            current_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
+        )
+    else:
+        result_path = os.abspath(args.logfile)
 
     for spec in selected_recipe_specs:
         try:
