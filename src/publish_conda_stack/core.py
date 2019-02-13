@@ -69,6 +69,7 @@ def parse_cmdline_args():
         default=[],
         help="Use label(s) when uploading package. Can be added multiple times.",
     )
+    parser.add_argument("--token", default=None, help="Token used for anaconda upload.")
 
     if ENABLE_TAB_COMPLETION:
 
@@ -139,6 +140,8 @@ def parse_specs(args):
         # add main label per default
         shared_config["label-string"] = "--label main"
 
+    shared_config["token_string"] = args.token_string
+
     return shared_config, selected_recipe_specs, master_conda_build_config
 
 
@@ -153,13 +156,15 @@ def main():
         print_recipe_list(selected_recipe_specs)
         sys.exit(0)
 
+    tmp_args = vars(args)
+    tmp_args["token-string"] = "nope"
     result = {
         "found": [],
         "built": [],
         "errors": [],
         "skipped": [],
         "start_time": start_time.isoformat(timespec="seconds"),
-        "args": vars(args),
+        "args": tmp_args,
     }
 
     current_path = os.path.abspath(os.getcwd())
@@ -546,7 +551,7 @@ def upload_package(
 
     upload_cmd = (
         f"anaconda upload -u {shared_config['destination-channel']} "
-        f"{shared_config['label-string']} {pkg_file_path}"
+        f"{shared_config['label-string']} {shared_config['token-string']} {pkg_file_path}"
     )
     logger.info(f"Uploading {pkg_file_name}")
     logger.info(upload_cmd)

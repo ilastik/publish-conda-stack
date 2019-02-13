@@ -5,9 +5,10 @@ import subprocess
 
 
 @pytest.mark.parametrize(
-    "label_string", [("--label main",), ("--label test --label staging")]
+    "label_string,token_string",
+    [("--label main", ""), ("--label test --label staging", "-t abc")],
 )
-def test_upload(mocker, label_string):
+def test_upload(mocker, label_string, token_string):
     # Mocking:
     mocker.patch("subprocess.check_call")
     mocker.patch("os.path.exists")
@@ -21,7 +22,11 @@ def test_upload(mocker, label_string):
     package_name = "test_package"
     recipe_version = "0.1.0"
     recipe_build_string = "py_1"
-    shared_config = {"destination-channel": test_channel, "label-string": label_string}
+    shared_config = {
+        "destination-channel": test_channel,
+        "label-string": label_string,
+        "token-string": token_string,
+    }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
     )
@@ -40,5 +45,6 @@ def test_upload(mocker, label_string):
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
-        f"anaconda upload -u {test_channel} {label_string} {test_path}", shell=True
+        f"anaconda upload -u {test_channel} {label_string} {token_string} {test_path}",
+        shell=True,
     )
