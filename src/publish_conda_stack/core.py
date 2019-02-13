@@ -11,6 +11,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import typing
 import yaml
 
 
@@ -57,11 +58,16 @@ def parse_cmdline_args():
         nargs="*",
         help="Which recipes to process (Default: process all)",
     )
-
     parser.add_argument(
         "--start-from",
         default="",
         help="Recipe name to start from building recipe specs in YAML file.",
+    )
+    parser.add_argument(
+        "--label",
+        action="append",
+        default=[],
+        help="Use label(s) when uploading package. Can be added multiple times.",
     )
 
     if ENABLE_TAB_COMPLETION:
@@ -123,6 +129,16 @@ def parse_specs(args):
         master_conda_build_config = os.path.abspath(
             shared_config["master-conda-build-config"]
         )
+
+    # add convenience string for labels
+    if args.label:
+        shared_config["label-string"] = " ".join(
+            f"--label {label}" for label in args.label
+        )
+    else:
+        # add main label per default
+        shared_config["label-string"] = "--label main"
+
     return shared_config, selected_recipe_specs, master_conda_build_config
 
 
@@ -512,7 +528,7 @@ def upload_package(
     package_name,
     recipe_version,
     recipe_build_string,
-    shared_config,
+    shared_config: typing.Dict,
     conda_bld_config: conda_build.api.Config,
 ):
     """
@@ -529,7 +545,8 @@ def upload_package(
         raise RuntimeError(f"Can't find built package: {pkg_file_name}")
 
     upload_cmd = (
-        f"anaconda upload -u {shared_config['destination-channel']} {pkg_file_path}"
+        f"anaconda upload -u {shared_config['destination-channel']} "
+        f"{shared_config['label-string']} {pkg_file_path}"
     )
     logger.info(f"Uploading {pkg_file_name}")
     logger.info(upload_cmd)

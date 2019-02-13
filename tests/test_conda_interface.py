@@ -1,9 +1,13 @@
 from publish_conda_stack.core import upload_package
-import subprocess
 import os
+import pytest
+import subprocess
 
 
-def test_upload(mocker):
+@pytest.mark.parametrize(
+    "label_string", [("--label main",), ("--label test --label staging")]
+)
+def test_upload(mocker, label_string):
     # Mocking:
     mocker.patch("subprocess.check_call")
     mocker.patch("os.path.exists")
@@ -17,7 +21,7 @@ def test_upload(mocker):
     package_name = "test_package"
     recipe_version = "0.1.0"
     recipe_build_string = "py_1"
-    shared_config = {"destination-channel": test_channel}
+    shared_config = {"destination-channel": test_channel, "label-string": label_string}
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
     )
@@ -36,5 +40,5 @@ def test_upload(mocker):
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
-        f"anaconda upload -u {test_channel} {test_path}", shell=True
+        f"anaconda upload -u {test_channel} {label_string} {test_path}", shell=True
     )
