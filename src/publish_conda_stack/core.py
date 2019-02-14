@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
+from . import __version__
+
 from os.path import basename, splitext, abspath, exists, dirname, normpath
 from pathlib import Path
 import argparse
@@ -11,6 +13,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 import typing
 import yaml
 
@@ -167,6 +170,7 @@ def main():
     tmp_args = vars(args)
     tmp_args["token"] = "nope"
     result = {
+        "version": __version__,
         "found": [],
         "built": [],
         "errors": [],
@@ -358,6 +362,7 @@ def build_and_upload_recipe(
         ret_dict = {"found": package_info}
     else:
         # Not on our channel.  Build and upload.
+        t0 = time.time()
         build_recipe(
             package_name,
             recipe_subdir,
@@ -366,6 +371,7 @@ def build_and_upload_recipe(
             shared_config,
             variant_config,
         )
+        package_info["build-duration"] = time.time() - t0
         upload_package(
             package_name,
             recipe_version,
@@ -565,13 +571,12 @@ def upload_package(
         f"{shared_config['label-string']} {pkg_file_path}"
     )
     logger.info(f"Uploading {pkg_file_name}")
-    logger.info(upload_cmd)
     try:
         subprocess.check_call(upload_cmd, shell=True)
     except subprocess.CalledProcessError as e:
         # clean up token string in case of errors
         if shared_config["token-string"] != "":
-            e.message = e.message.replace(
-                share_config["token-string"], "<token-string removed>"
+            e.cmd = e.cmd.replace(
+                shared_config["token-string"], "<token-string removed>"
             )
         raise
