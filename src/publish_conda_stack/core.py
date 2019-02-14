@@ -145,7 +145,10 @@ def parse_specs(args):
         # add main label per default
         shared_config["label-string"] = "--label main"
 
-    shared_config["token_string"] = args.token_string
+    if args.token != "":
+        shared_config["token-string"] = f"-t {args.token}"
+    else:
+        shared_config["token-string"] = ""
 
     return shared_config, selected_recipe_specs, master_conda_build_config
 
@@ -162,7 +165,7 @@ def main():
         sys.exit(0)
 
     tmp_args = vars(args)
-    tmp_args["token-string"] = "nope"
+    tmp_args["token"] = "nope"
     result = {
         "found": [],
         "built": [],
@@ -178,7 +181,7 @@ def main():
             current_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
         )
     else:
-        result_path = os.abspath(args.logfile)
+        result_file = os.path.abspath(args.logfile)
 
     for spec in selected_recipe_specs:
         try:

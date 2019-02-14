@@ -12,7 +12,7 @@ before_install:
   - conda config --set anaconda_upload no
 
 install:
-  - conda install -q python=$TRAVIS_PYTHON_VERSION conda-build pip anaconda-client 
+  - conda install -q conda-build pip anaconda-client
   - conda build conda-recipe
   - conda env create -n test-env --file dev/environment-dev.yaml
   - conda install -n test-env --use-local publish-conda-stack
