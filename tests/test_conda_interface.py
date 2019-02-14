@@ -45,6 +45,6 @@ def test_upload(mocker, label_string, token_string):
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
-        f"anaconda upload -u {test_channel} {label_string} {token_string} {test_path}",
+        f"anaconda {token_string} upload -u {test_channel} {label_string} {test_path}",
         shell=True,
     )

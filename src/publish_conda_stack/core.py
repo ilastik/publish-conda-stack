@@ -561,9 +561,17 @@ def upload_package(
         raise RuntimeError(f"Can't find built package: {pkg_file_name}")
 
     upload_cmd = (
-        f"anaconda upload -u {shared_config['destination-channel']} "
-        f"{shared_config['label-string']} {shared_config['token-string']} {pkg_file_path}"
+        f"anaconda {shared_config['token-string']} upload -u {shared_config['destination-channel']} "
+        f"{shared_config['label-string']} {pkg_file_path}"
     )
     logger.info(f"Uploading {pkg_file_name}")
     logger.info(upload_cmd)
-    subprocess.check_call(upload_cmd, shell=True)
+    try:
+        subprocess.check_call(upload_cmd, shell=True)
+    except subprocess.CalledProcessError as e:
+        # clean up token string in case of errors
+        if shared_config["token-string"] != "":
+            e.message = e.message.replace(
+                share_config["token-string"], "<token-string removed>"
+            )
+        raise
