@@ -181,7 +181,7 @@ def main():
             current_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
         )
     else:
-        result_path = os.abspath(args.logfile)
+        result_path = os.path.abspath(args.logfile)
 
     for spec in selected_recipe_specs:
         try:
