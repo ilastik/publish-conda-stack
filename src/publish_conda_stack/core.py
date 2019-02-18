@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from . import __version__
+from .util import strip_label
 
 from os.path import basename, splitext, abspath, exists, dirname, normpath
 from pathlib import Path
@@ -145,8 +146,15 @@ def parse_specs(args):
             f"--label {label}" for label in args.label
         )
     else:
-        # add main label per default
-        shared_config["label-string"] = "--label main"
+        shared_config["label-string"] = ""
+
+    # for the upload to work we need a clean upload channel without the label
+    # if a label is present, we add it to our upload labels
+    destination_channel, label = strip_label(shared_config["destination-channel"])
+    if label is not None:
+        if label not in shared_config["label-string"]:
+            shared_config["label-string"] += f" --label {label}"
+    shared_config["upload-channel"] = destination_channel
 
     if args.token != "":
         shared_config["token-string"] = f"-t {args.token}"
@@ -567,7 +575,7 @@ def upload_package(
         raise RuntimeError(f"Can't find built package: {pkg_file_name}")
 
     upload_cmd = (
-        f"anaconda {shared_config['token-string']} upload -u {shared_config['destination-channel']} "
+        f"anaconda {shared_config['token-string']} upload -u {shared_config['upload-channel']} "
         f"{shared_config['label-string']} {pkg_file_path}"
     )
     logger.info(f"Uploading {pkg_file_name}")
