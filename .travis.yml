@@ -14,8 +14,7 @@ before_install:
 install:
   - conda install -q conda-build pip anaconda-client
   - conda build conda-recipe
-  - conda env create -n test-env --file dev/environment-dev.yaml
-  - conda install -n test-env --use-local publish-conda-stack
+  - conda create -n test-env --use-local publish-conda-stack pytest pytest-mock
 
 script:
   - source activate test-env
