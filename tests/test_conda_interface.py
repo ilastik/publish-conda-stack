@@ -26,6 +26,7 @@ def test_upload(mocker, label_string, token_string):
         "destination-channel": test_channel,
         "label-string": label_string,
         "token-string": token_string,
+        "upload-channel": test_channel,
     }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
@@ -65,6 +66,7 @@ def test_hide_token(mocker):
         "destination-channel": test_channel,
         "label-string": label_string,
         "token-string": token_string,
+        "upload-channel": test_channel,
     }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
@@ -98,3 +100,49 @@ def test_hide_token(mocker):
         assert token_string not in e.cmd
     else:
         assert False, "Expected subprocess.CalledProcessError!!!"
+
+
+def test_upload_channel(mocker):
+    # Mocking:
+    mocker.patch("subprocess.check_call")
+    mocker.patch("os.path.exists")
+    os.path.exists.return_value = True
+
+    arch = "64"
+    build_folder = "/some/folder"
+    label_string = "--label blah"
+    platform = "linux"
+    test_channel = "test_channel"
+    token_string = ""
+
+    package_name = "test_package"
+    recipe_build_string = "py_1"
+    recipe_version = "0.1.0"
+    shared_config = {
+        "destination-channel": f"{test_channel}/label/blah",
+        "label-string": "--label blah",
+        "token-string": token_string,
+        "upload-channel": test_channel,
+    }
+    conda_bld_config = mocker.Mock(
+        build_folder=build_folder, platform=platform, arch=arch
+    )
+
+    upload_package(
+        package_name,
+        recipe_version,
+        recipe_build_string,
+        shared_config,
+        conda_bld_config,
+    )
+
+    test_path = os.path.join(
+        build_folder,
+        f"{platform}-{arch}",
+        f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2",
+    )
+    assert os.path.exists.call_count == 2
+    subprocess.check_call.assert_called_once_with(
+        f"anaconda {token_string} upload -u {test_channel} {label_string} {test_path}",
+        shell=True,
+    )
