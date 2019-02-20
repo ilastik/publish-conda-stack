@@ -64,7 +64,7 @@ def parse_cmdline_args():
     )
     parser.add_argument(
         "--start-from",
-        default="",
+        default=os.environ.get("PUBLISH_START_FROM", ""),
         help="Recipe name to start from building recipe specs in YAML file.",
     )
     parser.add_argument(
