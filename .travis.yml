@@ -18,7 +18,7 @@ install:
 
 script:
   - source activate test-env
-  - pytest tests
+  - pytest --doctest-modules .
   # test invocation of script
   - publish-conda-stack -h
 

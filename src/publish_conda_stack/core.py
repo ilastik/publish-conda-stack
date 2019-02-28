@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from . import __version__
-from .util import strip_label
+from .util import strip_label, labels_to_search_string, labels_to_upload_string
 
 from os.path import basename, splitext, abspath, exists, dirname, normpath
 from pathlib import Path
@@ -140,20 +140,12 @@ def parse_specs(args):
             shared_config["master-conda-build-config"]
         )
 
-    # add convenience string for labels
-    if args.label:
-        shared_config["label-string"] = " ".join(
-            f"--label {label}" for label in args.label
-        )
-    else:
-        shared_config["label-string"] = ""
+    shared_config["labels"] = args.label
 
-    # for the upload to work we need a clean upload channel without the label
-    # if a label is present, we add it to our upload labels
     destination_channel, label = strip_label(shared_config["destination-channel"])
     if label is not None:
-        if label not in shared_config["label-string"]:
-            shared_config["label-string"] += f" --label {label}"
+        if label not in shared_config["labels"]:
+            shared_config["labels"].append(label)
     shared_config["upload-channel"] = destination_channel
 
     if args.token != "":
@@ -290,14 +282,18 @@ def build_and_upload_recipe(
 ):
     """
     Given a recipe-spec dictionary, build and upload the recipe if
-    it doesn't already exist on ilastik-forge.
+    it doesn't already exist on <destination>.
 
     More specifically:
       1. Clone the recipe repo to our cache directory (if necessary)
       2. Check out the tag (with submodules, if any)
       3. Render the recipe's meta.yaml ('conda render')
-      4. Query the 'ilastik-forge' channel for the exact package.
-      5. If the package doesn't exist on ilastik-forge channel yet, build it and upload it.
+      4. Query the <destination> channel for the exact package. This includes all labels, too
+         e.g. if `--label debug` is specified this will also search <destination>/label/debug,
+         and <destination>/label/main!.
+         If a package with the same exact rendered package string is available under a different label,
+         anaconda upload of this package will fail.
+      5. If the package doesn't exist on <destination> channel yet, build it and upload it.
 
     A recipe-spec is a dict with the following keys:
       - name -- The package name
@@ -500,10 +496,16 @@ def check_already_exists(
 ):
     """
     Check if the given package already exists on anaconda.org in the
-    ilastik-forge channel with the given version and build string.
+    <destination> channel, including labels with the given version and build
+    string.
     """
     logger.info(f"Searching channel: {shared_config['destination-channel']}")
-    search_cmd = f"conda search --json  --full-name --override-channels --channel={shared_config['destination-channel']} {package_name}"
+    search_cmd = (
+        f"conda search --json  --full-name --override-channels"
+        f" --channel={shared_config['destination-channel']}"
+        f" {labels_to_search_string(shared_config['destination-channel'], shared_config['labels'])}"
+        f" {package_name}"
+    )
     logger.info(search_cmd)
     try:
         search_results_text = subprocess.check_output(search_cmd, shell=True).decode()
@@ -562,7 +564,7 @@ def upload_package(
     conda_bld_config: conda_build.api.Config,
 ):
     """
-    Upload the package to the ilastik-forge channel.
+    Upload the package to the <destination> channel.
     """
     pkg_file_name = f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2"
     BUILD_PKG_DIR = conda_bld_config.build_folder
@@ -575,8 +577,9 @@ def upload_package(
         raise RuntimeError(f"Can't find built package: {pkg_file_name}")
 
     upload_cmd = (
-        f"anaconda {shared_config['token-string']} upload -u {shared_config['upload-channel']} "
-        f"{shared_config['label-string']} {pkg_file_path}"
+        f"anaconda {shared_config['token-string']} upload -u {shared_config['upload-channel']}"
+        f" {labels_to_upload_string(shared_config['labels'])} "
+        f"{pkg_file_path}"
     )
     logger.info(f"Uploading {pkg_file_name}")
     try:

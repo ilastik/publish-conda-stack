@@ -1,4 +1,36 @@
 import re
+import typing
+
+
+def labels_to_upload_string(label_list: typing.List[str]) -> str:
+    """generates a string suitable for anaconda upload
+
+    Examples:
+
+    >>> labels_to_upload_string(['debug', 'devel'])
+    '--label debug --label devel'
+    >>> labels_to_upload_string([])
+    ''
+    """
+    return " ".join(f"--label {label}" for label in label_list)
+
+
+def labels_to_search_string(
+    destination_channel: str, label_list: typing.List[str]
+) -> str:
+    """generates a string suitable for conda search
+
+    Examples:
+
+    >>> labels_to_search_string('mychannel', ['debug', 'devel'])
+    '--channel mychannel/label/debug --channel mychannel/label/devel'
+
+    >>> labels_to_search_string('mychannel', [])
+    ''
+    """
+    return " ".join(
+        f"--channel {destination_channel}/label/{label}" for label in label_list
+    )
 
 
 def strip_label(channel_string: str) -> str:

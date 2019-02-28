@@ -1,20 +1,21 @@
 from publish_conda_stack.core import upload_package
+from publish_conda_stack.util import labels_to_upload_string
 import os
 import pytest
 import subprocess
 
 
 @pytest.mark.parametrize(
-    "label_string,token_string",
-    [("--label main", ""), ("--label test --label staging", "-t abc")],
+    "labels,token_string", [(["main"], ""), (["test", "staging"], "-t abc")]
 )
-def test_upload(mocker, label_string, token_string):
+def test_upload(mocker, labels, token_string):
     # Mocking:
     mocker.patch("subprocess.check_call")
     mocker.patch("os.path.exists")
     os.path.exists.return_value = True
 
     test_channel = "test_channel"
+    label_string = labels_to_upload_string(labels)
     build_folder = "/some/folder"
     platform = "linux"
     arch = "64"
@@ -24,7 +25,7 @@ def test_upload(mocker, label_string, token_string):
     recipe_build_string = "py_1"
     shared_config = {
         "destination-channel": test_channel,
-        "label-string": label_string,
+        "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
     }
@@ -52,7 +53,8 @@ def test_upload(mocker, label_string, token_string):
 
 
 def test_hide_token(mocker):
-    label_string = "--label blah"
+    labels = ["blah"]
+    label_string = labels_to_upload_string(labels)
     token_string = "-t ohoh"
     test_channel = "test_channel"
     build_folder = "/some/folder"
@@ -64,7 +66,7 @@ def test_hide_token(mocker):
     recipe_build_string = "py_1"
     shared_config = {
         "destination-channel": test_channel,
-        "label-string": label_string,
+        "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
     }
@@ -110,7 +112,8 @@ def test_upload_channel(mocker):
 
     arch = "64"
     build_folder = "/some/folder"
-    label_string = "--label blah"
+    labels = ["blah"]
+    label_string = labels_to_upload_string(labels)
     platform = "linux"
     test_channel = "test_channel"
     token_string = ""
@@ -120,7 +123,7 @@ def test_upload_channel(mocker):
     recipe_version = "0.1.0"
     shared_config = {
         "destination-channel": f"{test_channel}/label/blah",
-        "label-string": "--label blah",
+        "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
     }
