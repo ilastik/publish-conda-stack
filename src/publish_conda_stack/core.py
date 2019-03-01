@@ -502,8 +502,8 @@ def check_already_exists(
     logger.info(f"Searching channel: {shared_config['destination-channel']}")
     search_cmd = (
         f"conda search --json  --full-name --override-channels"
-        f" --channel={shared_config['destination-channel']}"
-        f" {labels_to_search_string(shared_config['destination-channel'], shared_config['labels'])}"
+        f" --channel={shared_config['upload-channel']}"
+        f" {labels_to_search_string(shared_config['upload-channel'], shared_config['labels'])}"
         f" {package_name}"
     )
     logger.info(search_cmd)
