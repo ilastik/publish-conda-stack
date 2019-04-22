@@ -3,7 +3,7 @@
 from . import __version__
 from .util import strip_label, labels_to_search_string, labels_to_upload_string
 
-from os.path import basename, splitext, abspath, exists, dirname, normpath
+from os.path import basename, splitext, abspath, exists, dirname, normpath, isabs
 from pathlib import Path
 import argparse
 import conda_build.api
@@ -97,6 +97,8 @@ def parse_cmdline_args():
 
 
 def parse_specs(args):
+
+    specs_dir = Path(dirname(abspath(args.recipe_specs_path)))
     specs_file_contents = yaml.load(open(args.recipe_specs_path, "r"))
 
     # Read the 'shared-config' section
@@ -118,7 +120,6 @@ def parse_specs(args):
     # Overwrite repo-cache-dir with an absolute path
     # Path is given relative to the specs file directory.
     if not shared_config["repo-cache-dir"].startswith("/"):
-        specs_dir = Path(dirname(abspath(args.recipe_specs_path)))
         shared_config["repo-cache-dir"] = Path(
             normpath(specs_dir / shared_config["repo-cache-dir"])
         )
@@ -135,10 +136,12 @@ def parse_specs(args):
         "master-conda-build-config" in shared_config
         and shared_config["master-conda-build-config"] != ""
     ):
-        # make path to config file absolute:
-        master_conda_build_config = os.path.abspath(
-            shared_config["master-conda-build-config"]
-        )
+        master_conda_build_config = shared_config["master-conda-build-config"]
+
+        # make path to config file absolute (relative to specs file directory):
+        if not isabs(master_conda_build_config):
+            master_conda_build_config = specs_dir / master_conda_build_config
+            shared_config["master-conda-build-config"] = str(master_conda_build_config)
 
     shared_config["labels"] = args.label
 
