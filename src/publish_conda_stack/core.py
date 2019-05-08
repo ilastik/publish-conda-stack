@@ -75,9 +75,10 @@ def parse_cmdline_args():
     )
     parser.add_argument("--token", default="", help="Token used for anaconda upload.")
     parser.add_argument(
-        "--logfile",
+        "--logfile", "-o",
         default="",
-        help="Use a different output for the log/summary yaml file.",
+        help="Specify custom output path of the log/summary yaml file, "
+             "or a directory in which to store it with an auto-chosen name.",
     )
 
     if ENABLE_TAB_COMPLETION:
@@ -182,13 +183,15 @@ def main():
         "args": tmp_args,
     }
 
-    current_path = os.path.abspath(os.getcwd())
-    if args.logfile == "":
-        result_file = os.path.join(
-            current_path, f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
-        )
-    else:
+    
+    default_outname = f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
+    if os.path.isdir(args.logfile):
+        logdir = os.path.abspath(args.logfile)
+        result_file = os.path.join(logdir, default_outname)
+    elif args.logfile:
         result_file = os.path.abspath(args.logfile)
+    else:
+        result_file = os.path.abspath(default_outname)
 
     for spec in selected_recipe_specs:
         try:
