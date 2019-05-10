@@ -5,8 +5,6 @@
 
 Scripts build a custom set of conda packages from a common environment and publish to a custom conda channel.
 
-By Stuart Berg, Carsten Haubold, in 2017
-
 ## Introduction:
 
 Originally developed to manage the dependency tree for [ilastik](https://ilastik.org), which we handle by using the _conda package manager_.
@@ -14,10 +12,8 @@ The build process is automated by the scripts in this repository.
 
 ## Installation
 
-A pre-build version of the `publish-conda-stack` package is available via conda:
-
 ```bash
-conda install -c ilastik-forge -c conda-forge publish-conda-stack
+conda install -n base -c ilastik-forge -c conda-forge publish-conda-stack
 ```
 
 This also installs the `publish-conda-stack` main entry-point and makes it available in the respective conda environment.
@@ -42,13 +38,13 @@ shared-config:
   # Path to store git repositories containing recipes. Relative to this yaml file's directory.
   repo-cache-dir: ./repo-cache
   # Optional path to master conda_build_config file to unify build-environment and package pins across recipes
-  master-conda-build-config: ./ilastik-pins.yaml
+  master-conda-build-config: ./my-pins.yaml
   # Channels to check for dependencies of the built package
   source-channels:
-    - ilastik-forge
+    - my-personal-channel
     - conda-forge
   # channel to upload recipes to
-  destination-channel: ilastik-forge
+  destination-channel: my-personal-channel
 ```
 
 #### Package definitions
@@ -93,15 +89,9 @@ pin_run_as_build:
 
 ```bash
 # on Linux and Windows:
-publish-conda-stack ilastik-recipe-specs.yaml
+publish-conda-stack my-recipe-specs.yaml
 # on Mac:
-MACOSX_DEPLOYMENT_TARGET=10.9 publish-conda-stack ilastik-recipe-specs.yaml
+MACOSX_DEPLOYMENT_TARGET=10.9 publish-conda-stack my-recipe-specs.yaml
 ```
 
-The `build-recipes.py` script parses the packages from `ilastik-recipe-specs.yaml`, and for each package checks whether that version is already available on the `ilastik-forge` channel. If that is not the case, it will build the package and upload it to `ilastik-forge`. By default, the script **assumes you have both solvers** and wants to build all packages. If you do not have CPLEX or Gurobi, comment out the sections near the end that have `cplex` or `gurobi` in their name, as well as the `ilastik-dependencies` package as described below.
-
-### Configuration:
-
-If you want to change which packages are built, _e.g._ to build **without solvers** edit the ilastik-recipe-specs.yaml file. There, you can comment or change the sections specific to respective packages.
-It is a YAML file with the following format:
-
+The `build-recipes.py` script parses the packages from `my-recipe-specs.yaml`, and for each package checks whether an up-to-date version is already available on the `destination-channel` listed in `my-recipe-specs.yaml`.  If the packages don't yet exist in that channel set, it will build the package and upload it.
