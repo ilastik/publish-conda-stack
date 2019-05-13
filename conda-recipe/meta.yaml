@@ -42,4 +42,5 @@ test:
 about:
   home: https://github.com/ilastik/publish-conda-stack
   author: Stuart E. Berg, Carsten Haubold
-  summary: Short description
+  summary: Scripts build a custom set of conda packages from a common environment and publish to a custom conda channel.
+  license: MIT
