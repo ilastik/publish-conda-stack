@@ -37,7 +37,7 @@ test:
     - pytest
     - pytest-mock
   commands:
-    - pytest --doctest-modules .
+    - pytest .
 
 about:
   home: https://github.com/ilastik/publish-conda-stack

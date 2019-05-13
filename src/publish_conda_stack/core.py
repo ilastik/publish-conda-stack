@@ -75,10 +75,13 @@ def parse_cmdline_args():
     )
     parser.add_argument("--token", default="", help="Token used for anaconda upload.")
     parser.add_argument(
-        "--logfile", "-o",
+        "--logfile",
+        "-o",
         default="",
-        help="Specify custom output path of the log/summary yaml file, "
-             "or a directory in which to store it with an auto-chosen name.",
+        help=(
+            "Specify custom output path of the log/summary yaml file, "
+            "or a directory in which to store it with an auto-chosen name."
+        ),
     )
 
     if ENABLE_TAB_COMPLETION:
@@ -183,7 +186,6 @@ def main():
         "args": tmp_args,
     }
 
-    
     default_outname = f"{start_time.strftime('%Y%m%d-%H%M%S')}_build_out.yaml"
     if os.path.isdir(args.logfile):
         logdir = os.path.abspath(args.logfile)

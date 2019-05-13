@@ -49,10 +49,7 @@ def strip_label(channel_string: str) -> str:
     >>> strip_label("some-channel")
     ('some-channel', None)
     """
-    regex = re.compile(
-        "/label/" + "(?P<label>[a-zA-Z0-9\-]+)" + "\Z",
-        re.X,
-    )
+    regex = re.compile("/label/" + "(?P<label>[a-zA-Z0-9\-]+)" + "\Z")
     res = regex.search(channel_string)
     if res is None:
         return channel_string, None
