@@ -1,0 +1,14 @@
+name: pcs-dev
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - anaconda-client
+  - black
+  - bumpversion
+  - conda-build
+  - conda-verify
+  - pre_commit
+  - pytest
+  - pytest-mock
+  - yaml
