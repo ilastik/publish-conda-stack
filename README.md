@@ -10,7 +10,19 @@ Scripts build a custom set of conda packages from a common environment and publi
 ## Introduction:
 
 Originally developed to manage the dependency tree for [ilastik](https://ilastik.org), which we handle by using the _conda package manager_.
-The build process is automated by the scripts in this repository.
+The build process is automated by the scripts in this repository.  For an example of a large package set which can be built using this tool, see [ilastik-conda-recipes](https://github.com/ilastik/ilastik-conda-recipes).
+
+### Basic Idea
+
+You have a list of conda recipes (spread across one or more git repos), and you want to make sure your channel has an up-to-date build of each corresponding package.  For each of your recipes, `publish-conda-stack` will perform the following steps:
+
+
+  1. Clone the recipe repo to a local cache.
+  2. Check out the desired tag (with submodules, if any).
+  3. Determine the exact package version (and build string) that the recipe would produce, if it were built (via `conda render`).
+  4. Check your channel to see if that exact version already exists.
+  5. If it doesn't exist on your channel yet, build the recipe and upload the resulting package to your channel.
+
 
 ## Installation
 
