@@ -1,5 +1,7 @@
 [![Build Status](https://travis-ci.org/ilastik/ilastik-publish-packages.svg?branch=master)](https://travis-ci.org/ilastik/ilastik-publish-packages)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
+[![Anaconda-Server Badge](https://anaconda.org/ilastik-forge/publish-conda-stack/badges/version.svg)](https://anaconda.org/ilastik-forge/publish-conda-stack)
+[![Anaconda-Server Badge](https://anaconda.org/ilastik-forge/publish-conda-stack/badges/latest_release_date.svg)](https://anaconda.org/ilastik-forge/publish-conda-stack)
 
 # publish-conda-stack
 
