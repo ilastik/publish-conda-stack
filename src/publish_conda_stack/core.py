@@ -473,14 +473,17 @@ def get_rendered_version(
         f" {recipe_subdir}"
         f" {shared_config['source-channel-string']}"
         f" --file {temp_meta_file.name}"
+        " --output"
     )
     if variant_config is not None:
         render_cmd = render_cmd + f" -m {variant_config}"
 
     logger.info(render_cmd)
-    rendered_meta_text = subprocess.check_output(
+    rendered_filename = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
+    build_string_with_hash = rendered_filename.split("-")[-1].split(".tar.bz2")[0]
+
     meta = yaml.load(open(temp_meta_file.name, "r"))
     os.remove(temp_meta_file.name)
 
@@ -488,13 +491,6 @@ def get_rendered_version(
         raise RuntimeError(
             f"Recipe for package '{package_name}' has unexpected name: '{meta['package']['name']}'"
         )
-
-    render_cmd = render_cmd + " --output"
-    logger.info(render_cmd)
-    rendered_filename = subprocess.check_output(
-        render_cmd, env=build_environment, shell=True
-    ).decode()
-    build_string_with_hash = rendered_filename.split("-")[-1].split(".tar.bz2")[0]
 
     return meta["package"]["version"], build_string_with_hash
 
