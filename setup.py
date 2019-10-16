@@ -15,7 +15,7 @@ setup(
     install_requires=[
         "argcomplete",
         "anaconda-client",
-        "conda-build",
+        "conda-build>=3.18.10",
         "conda-verify",
         "pyyaml",
     ],
