@@ -87,7 +87,7 @@ def parse_cmdline_args():
     if ENABLE_TAB_COMPLETION:
 
         def complete_recipe_selection(prefix, action, parser, parsed_args):
-            specs_file_contents = yaml.load(open(parsed_args.recipe_specs_path, "r"))
+            specs_file_contents = yaml.safe_load(open(parsed_args.recipe_specs_path, "r"))
             recipe_specs = specs_file_contents["recipe-specs"]
             names = (spec["name"] for spec in recipe_specs)
             return filter(lambda name: name.startswith(prefix), names)
@@ -103,7 +103,7 @@ def parse_cmdline_args():
 def parse_specs(args):
 
     specs_dir = Path(dirname(abspath(args.recipe_specs_path)))
-    specs_file_contents = yaml.load(open(args.recipe_specs_path, "r"))
+    specs_file_contents = yaml.safe_load(open(args.recipe_specs_path, "r"))
 
     # Read the 'shared-config' section
     shared_config = specs_file_contents["shared-config"]
@@ -484,7 +484,7 @@ def get_rendered_version(
     ).decode()
     build_string_with_hash = rendered_filename.split("-")[-1].split(".tar.bz2")[0]
 
-    meta = yaml.load(open(temp_meta_file.name, "r"))
+    meta = yaml.safe_load(open(temp_meta_file.name, "r"))
     os.remove(temp_meta_file.name)
 
     if meta["package"]["name"] != package_name:
