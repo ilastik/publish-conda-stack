@@ -1,6 +1,5 @@
 name: pcs-dev
 channels:
-  - defaults
   - conda-forge
 dependencies:
   - anaconda-client
