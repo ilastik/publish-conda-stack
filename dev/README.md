@@ -20,6 +20,7 @@ The only _special_ thing here is the `release-type` with its `build`. `release-t
 | | | | +--+ `bumpversion build`   -> 1.2.3dev5
 | | | |
 | | | +----+ `bumpversion release` -> 1.2.3
+| | | +----+ `bumpversion release` -> 1.2.3.post0
 | | |
 | | +------+ `bumpversion patch`   -> 1.2.4dev0
 | |
