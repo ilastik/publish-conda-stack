@@ -5,6 +5,7 @@ from .util import strip_label, labels_to_search_string, labels_to_upload_string
 
 from os.path import basename, splitext, abspath, exists, dirname, normpath, isabs
 from pathlib import Path
+from collections import namedtuple
 import argparse
 import conda_build.api
 import datetime
@@ -13,9 +14,8 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
 import time
-import typing
+from typing import Dict, Tuple
 import ruamel.yaml as yaml
 
 
@@ -35,6 +35,9 @@ except Exception as e:
 
 # Disable git pager for log messages, etc.
 os.environ["GIT_PAGER"] = ""
+
+# Canonical Conda Package Name
+CCPkgName = namedtuple("CCPkgName", ["package_name", "version", "build_string"])
 
 
 def parse_cmdline_args():
@@ -87,7 +90,9 @@ def parse_cmdline_args():
     if ENABLE_TAB_COMPLETION:
 
         def complete_recipe_selection(prefix, action, parser, parsed_args):
-            specs_file_contents = yaml.safe_load(open(parsed_args.recipe_specs_path, "r"))
+            specs_file_contents = yaml.safe_load(
+                open(parsed_args.recipe_specs_path, "r")
+            )
             recipe_specs = specs_file_contents["recipe-specs"]
             names = (spec["name"] for spec in recipe_specs)
             return filter(lambda name: name.startswith(prefix), names)
@@ -457,7 +462,7 @@ def checkout_recipe_repo(recipe_repo, tag):
 
 def get_rendered_version(
     package_name, recipe_subdir, build_environment, shared_config, variant_config
-):
+) -> Tuple[CCPkgName, ...]:
     """
     Use 'conda render' to process a recipe's meta.yaml (processes jinja templates and selectors).
     Returns the version and build string from the rendered file.
@@ -466,33 +471,31 @@ def get_rendered_version(
         tuple: recipe_version, recipe_build_string
     """
     logger.info(f"Rendering recipe in {recipe_subdir}...")
-    temp_meta_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_meta_file.close()
     render_cmd = (
         "conda render"
         f" {recipe_subdir}"
         f" {shared_config['source-channel-string']}"
-        f" --file {temp_meta_file.name}"
         " --output"
     )
     if variant_config is not None:
         render_cmd = render_cmd + f" -m {variant_config}"
 
     logger.info(render_cmd)
-    rendered_filename = subprocess.check_output(
+    rendered_filenames = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
-    build_string_with_hash = rendered_filename.split("-")[-1].split(".tar.bz2")[0]
 
-    meta = yaml.safe_load(open(temp_meta_file.name, "r"))
-    os.remove(temp_meta_file.name)
+    name_version_builds = [
+        CCPkgName(*Path(x).name.split("-")) for x in rendered_filenames.split()
+    ]
 
-    if meta["package"]["name"] != package_name:
+    if not all(x.package_name == package_name for x in name_version_builds):
         raise RuntimeError(
-            f"Recipe for package '{package_name}' has unexpected name: '{meta['package']['name']}'"
+            f"Expected all outputs to be {package_name}, but got"
+            f"{name_version_builds}"
         )
 
-    return meta["package"]["version"], build_string_with_hash
+    return tuple(name_version_builds)
 
 
 def check_already_exists(
@@ -564,7 +567,7 @@ def upload_package(
     package_name,
     recipe_version,
     recipe_build_string,
-    shared_config: typing.Dict,
+    shared_config: Dict,
     conda_bld_config: conda_build.api.Config,
 ):
     """

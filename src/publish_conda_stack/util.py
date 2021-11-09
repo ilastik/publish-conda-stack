@@ -1,8 +1,8 @@
 import re
-import typing
+from typing import List, Tuple, Union
 
 
-def labels_to_upload_string(label_list: typing.List[str]) -> str:
+def labels_to_upload_string(label_list: List[str]) -> str:
     """generates a string suitable for anaconda upload
 
     Examples:
@@ -15,9 +15,7 @@ def labels_to_upload_string(label_list: typing.List[str]) -> str:
     return " ".join(f"--label {label}" for label in label_list)
 
 
-def labels_to_search_string(
-    destination_channel: str, label_list: typing.List[str]
-) -> str:
+def labels_to_search_string(destination_channel: str, label_list: List[str]) -> str:
     """generates a string suitable for conda search
 
     Examples:
@@ -33,7 +31,7 @@ def labels_to_search_string(
     )
 
 
-def strip_label(channel_string: str) -> str:
+def strip_label(channel_string: str) -> Tuple[str, Union[str, None]]:
     """Remove label from channel string
 
     Args:
