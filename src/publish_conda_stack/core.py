@@ -484,7 +484,8 @@ def get_rendered_version(
     ).decode()
 
     name_version_builds = [
-        CCPkgName(*Path(x).name.split("-")) for x in rendered_filenames.split()
+        CCPkgName(*Path(x).name.replace(".tar.bz2", "").split("-"))
+        for x in rendered_filenames.split()
     ]
 
     if not all(x.package_name == package_name for x in name_version_builds):
