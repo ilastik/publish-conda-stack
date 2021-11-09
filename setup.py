@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="publish-conda-stack",
-    version="0.2.4.post0",
+    version="0.3.0dev0",
     author="Stuart Berg, Carsten Haubold",
     author_email="team@ilastik.org",
     license="MIT",
