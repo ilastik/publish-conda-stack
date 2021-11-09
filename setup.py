@@ -17,7 +17,7 @@ setup(
         "anaconda-client",
         "conda-build>=3.18.10",
         "conda-verify",
-        "pyyaml",
+        "ruamel.yaml",
     ],
     entry_points={
         "console_scripts": ["publish-conda-stack = publish_conda_stack.__main__:main"]

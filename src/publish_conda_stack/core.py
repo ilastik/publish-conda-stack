@@ -5,6 +5,7 @@ from .util import strip_label, labels_to_search_string, labels_to_upload_string
 
 from os.path import basename, splitext, abspath, exists, dirname, normpath, isabs
 from pathlib import Path
+from collections import namedtuple
 import argparse
 import conda_build.api
 import datetime
@@ -13,10 +14,9 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
 import time
-import typing
-import yaml
+from typing import Dict, List, Tuple
+import ruamel.yaml as yaml
 
 
 logger = logging.getLogger()
@@ -35,6 +35,9 @@ except Exception as e:
 
 # Disable git pager for log messages, etc.
 os.environ["GIT_PAGER"] = ""
+
+# Canonical Conda Package Name
+CCPkgName = namedtuple("CCPkgName", ["package_name", "version", "build_string"])
 
 
 def parse_cmdline_args():
@@ -87,7 +90,9 @@ def parse_cmdline_args():
     if ENABLE_TAB_COMPLETION:
 
         def complete_recipe_selection(prefix, action, parser, parsed_args):
-            specs_file_contents = yaml.safe_load(open(parsed_args.recipe_specs_path, "r"))
+            specs_file_contents = yaml.safe_load(
+                open(parsed_args.recipe_specs_path, "r")
+            )
             recipe_specs = specs_file_contents["recipe-specs"]
             names = (spec["name"] for spec in recipe_specs)
             return filter(lambda name: name.startswith(prefix), names)
@@ -352,24 +357,24 @@ def build_and_upload_recipe(
     os.chdir(repo_dir)
 
     # Render
-    recipe_version, recipe_build_string = get_rendered_version(
+    c_pkg_names = get_rendered_version(
         package_name, recipe_subdir, build_environment, shared_config, variant_config
     )
     logger.info(
-        f"Recipe version is: {package_name}-{recipe_version}-{recipe_build_string}"
+        f"Recipe rendered to {len(c_pkg_names)} packages: {['-'.join(map(str, x)) for x in c_pkg_names]}"
     )
 
     # Check our channel.  Did we already upload this version?
     package_info = {
         "pakage_name": package_name,
-        "recipe_version": recipe_version,
-        "recipe_build_string": recipe_build_string,
+        "recipe_versions": [x.version for x in c_pkg_names],
+        "recipe_build_string": [x.build_string for x in c_pkg_names],
     }
-    if check_already_exists(
-        package_name, recipe_version, recipe_build_string, shared_config
-    ):
+
+    packages_found = check_already_exists(c_pkg_names, shared_config)
+    if all(x[1] for x in packages_found):
         logger.info(
-            f"Found {package_name}-{recipe_version}-{recipe_build_string} on {shared_config['destination-channel']}, skipping build."
+            f"Found {c_pkg_names} on {shared_config['destination-channel']}, skipping build."
         )
         ret_dict = {"found": package_info}
     else:
@@ -385,9 +390,7 @@ def build_and_upload_recipe(
         )
         package_info["build-duration"] = time.time() - t0
         upload_package(
-            package_name,
-            recipe_version,
-            recipe_build_string,
+            c_pkg_names,
             shared_config,
             conda_bld_config,
         )
@@ -457,7 +460,7 @@ def checkout_recipe_repo(recipe_repo, tag):
 
 def get_rendered_version(
     package_name, recipe_subdir, build_environment, shared_config, variant_config
-):
+) -> Tuple[CCPkgName, ...]:
     """
     Use 'conda render' to process a recipe's meta.yaml (processes jinja templates and selectors).
     Returns the version and build string from the rendered file.
@@ -466,43 +469,44 @@ def get_rendered_version(
         tuple: recipe_version, recipe_build_string
     """
     logger.info(f"Rendering recipe in {recipe_subdir}...")
-    temp_meta_file = tempfile.NamedTemporaryFile(delete=False)
-    temp_meta_file.close()
     render_cmd = (
         "conda render"
         f" {recipe_subdir}"
         f" {shared_config['source-channel-string']}"
-        f" --file {temp_meta_file.name}"
         " --output"
     )
     if variant_config is not None:
         render_cmd = render_cmd + f" -m {variant_config}"
 
     logger.info(render_cmd)
-    rendered_filename = subprocess.check_output(
+    rendered_filenames = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
-    build_string_with_hash = rendered_filename.split("-")[-1].split(".tar.bz2")[0]
 
-    meta = yaml.safe_load(open(temp_meta_file.name, "r"))
-    os.remove(temp_meta_file.name)
+    name_version_builds = [
+        CCPkgName(*Path(x).name.replace(".tar.bz2", "").split("-"))
+        for x in rendered_filenames.split()
+    ]
 
-    if meta["package"]["name"] != package_name:
+    if not all(x.package_name == package_name for x in name_version_builds):
         raise RuntimeError(
-            f"Recipe for package '{package_name}' has unexpected name: '{meta['package']['name']}'"
+            f"Expected all outputs to be {package_name}, but got"
+            f"{name_version_builds}"
         )
 
-    return meta["package"]["version"], build_string_with_hash
+    return tuple(name_version_builds)
 
 
 def check_already_exists(
-    package_name, recipe_version, recipe_build_string, shared_config
-):
+    c_pkg_names: Tuple[CCPkgName, ...], shared_config
+) -> Tuple[Tuple[CCPkgName, bool], ...]:
     """
     Check if the given package already exists on anaconda.org in the
     <destination> channel, including labels with the given version and build
     string.
     """
+    # assuming all packages have the same name
+    package_name = c_pkg_names[0].package_name
     logger.info(f"Searching channel: {shared_config['destination-channel']}")
     search_cmd = (
         f"conda search --json  --full-name --override-channels"
@@ -516,21 +520,26 @@ def check_already_exists(
     except Exception:
         # In certain scenarios, the search can crash.
         # In such cases, the package wasn't there anyway, so return False
-        return False
+        return tuple((c_pkg, False) for c_pkg in c_pkg_names)
 
     search_results = json.loads(search_results_text)
 
     if package_name not in search_results:
-        return False
+        return tuple((c_pkg, False) for c_pkg in c_pkg_names)
 
-    for result in search_results[package_name]:
-        if (
-            result["build"] == recipe_build_string
-            and result["version"] == recipe_version
-        ):
-            logger.info("Found package!")
-            return True
-    return False
+    c_pkgs_found: List[Tuple[CCPkgName, bool]] = []
+    for c_pkg_name in c_pkg_names:
+        for result in search_results[package_name]:
+            if (
+                result["build"] == c_pkg_name.build_string
+                and result["version"] == c_pkg_name.version
+            ):
+                logger.info(f"Found package {c_pkg_name}")
+                c_pkgs_found.append((c_pkg_name, True))
+            else:
+                c_pkgs_found.append((c_pkg_name, False))
+
+    return tuple(c_pkgs_found)
 
 
 def build_recipe(
@@ -561,31 +570,33 @@ def build_recipe(
 
 
 def upload_package(
-    package_name,
-    recipe_version,
-    recipe_build_string,
-    shared_config: typing.Dict,
+    c_pkg_names,
+    shared_config: Dict,
     conda_bld_config: conda_build.api.Config,
 ):
     """
     Upload the package to the <destination> channel.
     """
-    pkg_file_name = f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2"
-    BUILD_PKG_DIR = conda_bld_config.build_folder
-    CONDA_PLATFORM = f"{conda_bld_config.platform}-{conda_bld_config.arch}"
-    pkg_file_path = os.path.join(BUILD_PKG_DIR, CONDA_PLATFORM, pkg_file_name)
-    if not os.path.exists(pkg_file_path):
-        # Maybe it's a noarch package?
-        pkg_file_path = os.path.join(BUILD_PKG_DIR, "noarch", pkg_file_name)
-    if not os.path.exists(pkg_file_path):
-        raise RuntimeError(f"Can't find built package: {pkg_file_name}")
+    package_paths = []
+    for c_pkg_name in c_pkg_names:
+        pkg_file_name = f"{c_pkg_name.package_name}-{c_pkg_name.version}-{c_pkg_name.build_string}.tar.bz2"
+        BUILD_PKG_DIR = conda_bld_config.build_folder
+        CONDA_PLATFORM = f"{conda_bld_config.platform}-{conda_bld_config.arch}"
+        pkg_file_path = os.path.join(BUILD_PKG_DIR, CONDA_PLATFORM, pkg_file_name)
+        if not os.path.exists(pkg_file_path):
+            # Maybe it's a noarch package?
+            pkg_file_path = os.path.join(BUILD_PKG_DIR, "noarch", pkg_file_name)
+        if not os.path.exists(pkg_file_path):
+            raise RuntimeError(f"Can't find built package: {pkg_file_name}")
+
+        package_paths.append(pkg_file_path)
 
     upload_cmd = (
         f"anaconda {shared_config['token-string']} upload -u {shared_config['upload-channel']}"
         f" {labels_to_upload_string(shared_config['labels'])} "
-        f"{pkg_file_path}"
+        f"{' '.join(package_paths)}"
     )
-    logger.info(f"Uploading {pkg_file_name}")
+    logger.info(f"Uploading {package_paths}")
     try:
         subprocess.check_call(upload_cmd, shell=True)
     except subprocess.CalledProcessError as e:
