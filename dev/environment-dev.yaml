@@ -7,7 +7,8 @@ dependencies:
   - bumpversion
   - conda-build
   - conda-verify
+  - mypy
   - pre_commit
   - pytest
   - pytest-mock
-  - yaml
+  - ruamel.yaml
