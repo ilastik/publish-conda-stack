@@ -479,13 +479,17 @@ def get_rendered_version(
         render_cmd = render_cmd + f" -m {variant_config}"
 
     logger.info(render_cmd)
-    rendered_filenames = subprocess.check_output(
+    subprocess_output = subprocess.check_output(
         render_cmd, env=build_environment, shell=True
     ).decode()
 
+    rendered_filenames = [
+        x for x in subprocess_output.split("\n") if x.endswith(".tar.bz2")
+    ]
+
     name_version_builds = [
         CCPkgName(*Path(x).name.replace(".tar.bz2", "").split("-"))
-        for x in rendered_filenames.split()
+        for x in rendered_filenames
     ]
 
     if not all(x.package_name == package_name for x in name_version_builds):
