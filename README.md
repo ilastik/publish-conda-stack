@@ -93,7 +93,15 @@ If the field is left blank, it will be simply ignored.
 Example file:
 
 ```yaml
-- python: 3.6
+python:
+  - 3.7
+# in case of matrix build, multiple versions can be added
+  - 3.8
+  - 3.9
+
+qt:
+  - 5.12
+
 
 pin_run_as_build:
   python: x.x
