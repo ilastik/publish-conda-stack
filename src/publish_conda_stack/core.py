@@ -16,7 +16,7 @@ import sys
 import tempfile
 import time
 import typing
-import yaml
+import ruamel.yaml as yaml
 
 
 logger = logging.getLogger()
