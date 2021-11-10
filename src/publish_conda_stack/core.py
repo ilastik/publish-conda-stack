@@ -513,18 +513,14 @@ def check_already_exists(
     package_name = c_pkg_names[0].package_name
     logger.info(f"Searching channel: {shared_config['destination-channel']}")
     search_cmd = (
-        f"conda search --json  --full-name --override-channels"
-        f" --channel={shared_config['upload-channel']}"
+        f"conda search --json --full-name --override-channels"
+        f" --channel {shared_config['upload-channel']}"
         f" {labels_to_search_string(shared_config['upload-channel'], shared_config['labels'])}"
         f" {package_name}"
     )
     logger.info(search_cmd)
-    try:
-        search_results_text = subprocess.check_output(search_cmd, shell=True).decode()
-    except Exception:
-        # In certain scenarios, the search can crash.
-        # In such cases, the package wasn't there anyway, so return False
-        return tuple((c_pkg, False) for c_pkg in c_pkg_names)
+
+    search_results_text = subprocess.check_output(search_cmd, shell=True).decode()
 
     search_results = json.loads(search_results_text)
 
@@ -533,15 +529,17 @@ def check_already_exists(
 
     c_pkgs_found: List[Tuple[CCPkgName, bool]] = []
     for c_pkg_name in c_pkg_names:
+        found = False
         for result in search_results[package_name]:
             if (
                 result["build"] == c_pkg_name.build_string
                 and result["version"] == c_pkg_name.version
             ):
+                found = True
                 logger.info(f"Found package {c_pkg_name}")
-                c_pkgs_found.append((c_pkg_name, True))
-            else:
-                c_pkgs_found.append((c_pkg_name, False))
+                break
+
+        c_pkgs_found.append((c_pkg_name, found))
 
     return tuple(c_pkgs_found)
 
@@ -596,7 +594,7 @@ def upload_package(
         package_paths.append(pkg_file_path)
 
     upload_cmd = (
-        f"anaconda {shared_config['token-string']} upload -u {shared_config['upload-channel']}"
+        f"anaconda {shared_config['token-string']} upload --skip-existing -u {shared_config['upload-channel']}"
         f" {labels_to_upload_string(shared_config['labels'])} "
         f"{' '.join(package_paths)}"
     )
