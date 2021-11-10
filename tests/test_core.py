@@ -37,6 +37,22 @@ import pytest
                 ),
             ),
         ),
+        # windows style line endings
+        (
+            "/some/path/abc-1.0.0-0py0.tar.bz2\r\n/some/path/abc-1.0.0-1py2.tar.bz2",
+            (
+                CCPkgName(
+                    "abc",
+                    "1.0.0",
+                    "0py0",
+                ),
+                CCPkgName(
+                    "abc",
+                    "1.0.0",
+                    "1py2",
+                ),
+            ),
+        ),
     ],
 )
 def test_get_rendered_version(mocker, c_package_names, expected):
