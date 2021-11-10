@@ -484,7 +484,7 @@ def get_rendered_version(
     ).decode()
 
     rendered_filenames = [
-        x for x in subprocess_output.split("\n") if x.endswith(".tar.bz2")
+        x for x in subprocess_output.split() if x.endswith(".tar.bz2")
     ]
 
     name_version_builds = [
