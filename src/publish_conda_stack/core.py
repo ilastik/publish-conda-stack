@@ -486,9 +486,8 @@ def get_rendered_version(
     rendered_filenames = [
         x for x in subprocess_output.split() if x.endswith(".tar.bz2")
     ]
-
     name_version_builds = [
-        CCPkgName(*Path(x).name.replace(".tar.bz2", "").split("-"))
+        CCPkgName(*Path(x).name.replace(".tar.bz2", "").rsplit("-", maxsplit=2))
         for x in rendered_filenames
     ]
 
