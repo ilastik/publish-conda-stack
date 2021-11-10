@@ -594,7 +594,7 @@ def upload_package(
         package_paths.append(pkg_file_path)
 
     upload_cmd = (
-        f"anaconda {shared_config['token-string']} upload -u {shared_config['upload-channel']}"
+        f"anaconda {shared_config['token-string']} upload --skip-existing -u {shared_config['upload-channel']}"
         f" {labels_to_upload_string(shared_config['labels'])} "
         f"{' '.join(package_paths)}"
     )

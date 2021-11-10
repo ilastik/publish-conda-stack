@@ -48,7 +48,7 @@ def test_upload(mocker, labels, token_string):
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
-        f"anaconda {token_string} upload -u {test_channel} {label_string} {test_path}",
+        f"anaconda {token_string} upload --skip-existing -u {test_channel} {label_string} {test_path}",
         shell=True,
     )
 
@@ -83,7 +83,7 @@ def test_hide_token(mocker):
         f"{platform}-{arch}",
         f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2",
     )
-    cmd = f"anaconda {token_string} upload -u {test_channel} {label_string} {test_path}"
+    cmd = f"anaconda {token_string} upload --skip-existing -u {test_channel} {label_string} {test_path}"
 
     def side_effect(callable_str, *args, **kwargs):
         raise subprocess.CalledProcessError(cmd=callable_str, returncode=1)
@@ -148,7 +148,7 @@ def test_upload_channel(mocker):
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
-        f"anaconda {token_string} upload -u {test_channel} {label_string} {test_path}",
+        f"anaconda {token_string} upload --skip-existing -u {test_channel} {label_string} {test_path}",
         shell=True,
     )
 
@@ -204,7 +204,7 @@ def test_upload_multiple(mocker):
     assert os.path.exists.call_count == 2 * len(test_paths)
 
     subprocess.check_call.assert_called_once_with(
-        f"anaconda {token_string} upload -u {test_channel} {label_string} {' '.join(test_paths)}",
+        f"anaconda {token_string} upload --skip-existing -u {test_channel} {label_string} {' '.join(test_paths)}",
         shell=True,
     )
 
