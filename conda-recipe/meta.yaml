@@ -11,7 +11,11 @@ build:
   noarch: python
   script:
         - python -m pip install --no-deps --ignore-installed .
-
+        # not win affects conda build here - package should be built on linux
+        # to enable autocomplete in the package
+        # This fixes the windows build to enable testing via conda build
+        - mkdir -p $PREFIX/etc/conda/activate.d  # [not win]
+        - echo 'eval "$(register-python-argcomplete publish-conda-stack -s bash)"' > $PREFIX/etc/conda/activate.d/activate_publish-conda-stack.sh  # [not win]
   entry_points:
     {% for ep in data['entry_points']['console_scripts'] %}
     - {{ ep }}
