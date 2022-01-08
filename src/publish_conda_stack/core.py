@@ -140,7 +140,6 @@ def parse_specs(args):
     )
 
     # Optional master_conda_build_config
-    master_conda_build_config = None
     if (
         "master-conda-build-config" in shared_config
         and shared_config["master-conda-build-config"] != ""
@@ -149,8 +148,11 @@ def parse_specs(args):
 
         # make path to config file absolute (relative to specs file directory):
         if not isabs(master_conda_build_config):
-            master_conda_build_config = specs_dir / master_conda_build_config
-            shared_config["master-conda-build-config"] = str(master_conda_build_config)
+            shared_config["master-conda-build-config"] = (
+                specs_dir / master_conda_build_config
+            )
+    else:
+        shared_config["master-conda-build-config"] = None
 
     shared_config["labels"] = args.label
 
@@ -165,7 +167,7 @@ def parse_specs(args):
     else:
         shared_config["token-string"] = ""
 
-    return shared_config, selected_recipe_specs, master_conda_build_config
+    return shared_config, selected_recipe_specs
 
 
 def main():
@@ -202,9 +204,7 @@ def main():
 
     for spec in selected_recipe_specs:
         try:
-            status = build_and_upload_recipe(
-                spec, shared_config, conda_bld_config, master_conda_build_config
-            )
+            status = build_and_upload_recipe(spec, shared_config, conda_bld_config)
         except Exception as e:
             result["errors"].append({"spec": spec, "error": e})
             write_result(result_file, result)
@@ -291,7 +291,7 @@ def get_selected_specs(args, full_recipe_specs):
 
 
 def build_and_upload_recipe(
-    recipe_spec, shared_config, conda_bld_config: conda_build.api.Config, variant_config
+    recipe_spec, shared_config, conda_bld_config: conda_build.api.Config
 ):
     """
     Given a recipe-spec dictionary, build and upload the recipe if
@@ -355,7 +355,7 @@ def build_and_upload_recipe(
 
     # All subsequent work takes place within the recipe repo
     os.chdir(repo_dir)
-
+    variant_config = shared_config["master-conda-build-config"]
     # Render
     c_pkg_names = get_rendered_version(
         package_name, recipe_subdir, build_environment, shared_config, variant_config
@@ -386,7 +386,6 @@ def build_and_upload_recipe(
             conda_build_flags,
             build_environment,
             shared_config,
-            variant_config,
         )
         package_info["build-duration"] = time.time() - t0
         upload_package(
@@ -549,7 +548,6 @@ def build_recipe(
     build_flags,
     build_environment,
     shared_config,
-    variant_config,
 ):
     """
     Build the recipe.
@@ -560,6 +558,7 @@ def build_recipe(
         f" {shared_config['source-channel-string']}"
         f" {recipe_subdir}"
     )
+    variant_config = shared_config["master-conda-build-config"]
     if variant_config is not None:
         build_cmd = build_cmd + f" -m {variant_config}"
 
