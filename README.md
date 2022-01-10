@@ -45,6 +45,8 @@ Run `conda install anaconda-client`. You need to be logged in to your https://an
 ```yaml
 # common configuration for all packages defined in shared-config:
 shared-config:
+  # backend: new in 0.4, added support for `conda` and `mamba` with `conda` being the default
+  backend: mamba
   # will translate to --python for every conda-build, deprecated, use pin-file
   python: '3.6'
   # will translate to --numpy for every conda-build, deprecated, use pin-file

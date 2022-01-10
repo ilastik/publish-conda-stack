@@ -60,7 +60,7 @@ def test_get_rendered_version(mocker, c_package_names, expected):
     subprocess_mock.return_value = c_package_names.encode()
     mocker.patch("subprocess.check_output", new=subprocess_mock)
     res = get_rendered_version(
-        "abc", "mock_path", "bld_env", {"source-channel-string": "ignore"}, None
+        "abc", "mock_path", "bld_env", {"conda-source-channel-list": ["-c", "ignore"]}
     )
 
     assert len(res) == len(expected)
@@ -73,7 +73,7 @@ def test_get_rendered_version_hyphen_pkg(mocker):
     subprocess_mock.return_value = "/some/path/a-b-c-1.0.0-0py0.tar.bz2".encode()
     mocker.patch("subprocess.check_output", new=subprocess_mock)
     res = get_rendered_version(
-        "a-b-c", "mock_path", "bld_env", {"source-channel-string": "ignore"}, None
+        "a-b-c", "mock_path", "bld_env", {"conda-source-channel-list": ["-c", "ignore"]}
     )
     assert len(res) == 1
     assert res[0].package_name == "a-b-c"
@@ -85,7 +85,10 @@ def test_get_rendered_version_raises(mocker):
     mocker.patch("subprocess.check_output", new=subprocess_mock)
     with pytest.raises(RuntimeError):
         _ = get_rendered_version(
-            "abc", "mock_path", "bld_env", {"source-channel-string": "ignore"}, None
+            "abc",
+            "mock_path",
+            "bld_env",
+            {"conda-source-channel-list": ["-c", "ignore"]},
         )
 
 
@@ -96,7 +99,7 @@ def test_get_rendered_version_ignores_patch_outputs(mocker):
     expected = CCPkgName("abc", "1.0.0", "0py0whatever")
 
     res = get_rendered_version(
-        "abc", "mock_path", "bld_env", {"source-channel-string": "ignore"}, None
+        "abc", "mock_path", "bld_env", {"conda-source-channel-list": ["-c", "ignore"]}
     )
 
     assert len(res) == 1
@@ -131,9 +134,18 @@ def test_check_already_exists(mocker):
     pkgs_found = check_already_exists(c_pkg_names, shared_config)
 
     subprocess_mock.assert_called_once_with(
-        "conda search --json --full-name --override-channels "
-        "--channel blah-forge --channel blah-forge/label/test mypack",
-        shell=True,
+        [
+            "conda",
+            "search",
+            "--json",
+            "--full-name",
+            "--override-channels",
+            "--channel",
+            "blah-forge",
+            "--channel",
+            "blah-forge/label/test",
+            "mypack",
+        ]
     )
 
     assert len(pkgs_found) == 1
@@ -175,9 +187,18 @@ def test_check_already_exists_doesnt_add(mocker):
     pkgs_found = check_already_exists(c_pkg_names, shared_config)
 
     subprocess_mock.assert_called_once_with(
-        "conda search --json --full-name --override-channels "
-        "--channel blah-forge --channel blah-forge/label/test mypack",
-        shell=True,
+        [
+            "conda",
+            "search",
+            "--json",
+            "--full-name",
+            "--override-channels",
+            "--channel",
+            "blah-forge",
+            "--channel",
+            "blah-forge/label/test",
+            "mypack",
+        ]
     )
 
     assert len(pkgs_found) == 1
