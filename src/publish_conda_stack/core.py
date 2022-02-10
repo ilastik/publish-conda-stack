@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
 from . import __version__
-from .util import strip_label, labels_to_search_string, labels_to_upload_string
+from .util import strip_label, labels_to_upload_string
+from .cmdutil import conda_cmd_base, CondaCommand
 
 from os.path import basename, splitext, abspath, exists, dirname, normpath, isabs
 from pathlib import Path
@@ -15,6 +16,7 @@ import os
 import subprocess
 import sys
 import time
+from itertools import chain
 from typing import Dict, List, Tuple
 import ruamel.yaml as yaml
 
@@ -122,8 +124,8 @@ def parse_specs(args):
     ), f"shared-config section is missing expected keys.  Expected: {required_shared_config_keys}"
 
     # Convenience member
-    shared_config["source-channel-string"] = " ".join(
-        [f"-c {ch}" for ch in shared_config["source-channels"]]
+    shared_config["conda-source-channel-list"] = list(
+        chain.from_iterable([("-c", ch) for ch in shared_config["source-channels"]])
     )
 
     # Overwrite repo-cache-dir with an absolute path
@@ -140,7 +142,6 @@ def parse_specs(args):
     )
 
     # Optional master_conda_build_config
-    master_conda_build_config = None
     if (
         "master-conda-build-config" in shared_config
         and shared_config["master-conda-build-config"] != ""
@@ -149,8 +150,11 @@ def parse_specs(args):
 
         # make path to config file absolute (relative to specs file directory):
         if not isabs(master_conda_build_config):
-            master_conda_build_config = specs_dir / master_conda_build_config
-            shared_config["master-conda-build-config"] = str(master_conda_build_config)
+            shared_config["master-conda-build-config"] = str(
+                specs_dir / master_conda_build_config
+            )
+    else:
+        shared_config["master-conda-build-config"] = None
 
     shared_config["labels"] = args.label
 
@@ -160,12 +164,25 @@ def parse_specs(args):
             shared_config["labels"].append(label)
     shared_config["upload-channel"] = destination_channel
 
+    if "backend" not in shared_config:
+        shared_config["backend"] = "conda"
+
+    shared_config["backend"] = shared_config["backend"].lower()
+    if shared_config["backend"] not in ["conda", "mamba"]:
+        raise ValueError(
+            f"Backend must be either `conda` or `mamba` - found {shared_config['backend']}"
+        )
+
+    logger.info(
+        f"Using `{shared_config['backend']}` backend. Can be set in config file under the 'backend' key."
+    )
+
     if args.token != "":
         shared_config["token-string"] = f"-t {args.token}"
     else:
         shared_config["token-string"] = ""
 
-    return shared_config, selected_recipe_specs, master_conda_build_config
+    return shared_config, selected_recipe_specs
 
 
 def main():
@@ -173,7 +190,7 @@ def main():
     args = parse_cmdline_args()
     conda_bld_config = conda_build.api.get_or_merge_config(conda_build.api.Config())
 
-    shared_config, selected_recipe_specs, master_conda_build_config = parse_specs(args)
+    shared_config, selected_recipe_specs = parse_specs(args)
 
     if args.list:
         print_recipe_list(selected_recipe_specs)
@@ -183,6 +200,7 @@ def main():
     tmp_args["token"] = "nope"
     result = {
         "version": __version__,
+        "backend": shared_config["backend"],
         "found": [],
         "built": [],
         "errors": [],
@@ -202,9 +220,7 @@ def main():
 
     for spec in selected_recipe_specs:
         try:
-            status = build_and_upload_recipe(
-                spec, shared_config, conda_bld_config, master_conda_build_config
-            )
+            status = build_and_upload_recipe(spec, shared_config, conda_bld_config)
         except Exception as e:
             result["errors"].append({"spec": spec, "error": e})
             write_result(result_file, result)
@@ -291,7 +307,7 @@ def get_selected_specs(args, full_recipe_specs):
 
 
 def build_and_upload_recipe(
-    recipe_spec, shared_config, conda_bld_config: conda_build.api.Config, variant_config
+    recipe_spec, shared_config, conda_bld_config: conda_build.api.Config
 ):
     """
     Given a recipe-spec dictionary, build and upload the recipe if
@@ -323,6 +339,7 @@ def build_and_upload_recipe(
     tag = recipe_spec["tag"]
     recipe_subdir = recipe_spec["recipe-subdir"]
     conda_build_flags = recipe_spec.get("conda-build-flags", "")
+    conda_build_flags = conda_build_flags.split(" ") if conda_build_flags else []
 
     logger.info("-------------------------------------------")
     logger.info(f"Processing {package_name}")
@@ -355,10 +372,9 @@ def build_and_upload_recipe(
 
     # All subsequent work takes place within the recipe repo
     os.chdir(repo_dir)
-
     # Render
     c_pkg_names = get_rendered_version(
-        package_name, recipe_subdir, build_environment, shared_config, variant_config
+        package_name, recipe_subdir, build_environment, shared_config
     )
     logger.info(
         f"Recipe rendered to {len(c_pkg_names)} packages: {['-'.join(map(str, x)) for x in c_pkg_names]}"
@@ -386,7 +402,6 @@ def build_and_upload_recipe(
             conda_build_flags,
             build_environment,
             shared_config,
-            variant_config,
         )
         package_info["build-duration"] = time.time() - t0
         upload_package(
@@ -459,7 +474,10 @@ def checkout_recipe_repo(recipe_repo, tag):
 
 
 def get_rendered_version(
-    package_name, recipe_subdir, build_environment, shared_config, variant_config
+    package_name,
+    recipe_subdir,
+    build_environment,
+    shared_config,
 ) -> Tuple[CCPkgName, ...]:
     """
     Use 'conda render' to process a recipe's meta.yaml (processes jinja templates and selectors).
@@ -469,18 +487,10 @@ def get_rendered_version(
         tuple: recipe_version, recipe_build_string
     """
     logger.info(f"Rendering recipe in {recipe_subdir}...")
-    render_cmd = (
-        "conda render"
-        f" {recipe_subdir}"
-        f" {shared_config['source-channel-string']}"
-        " --output"
-    )
-    if variant_config is not None:
-        render_cmd = render_cmd + f" -m {variant_config}"
-
-    logger.info(render_cmd)
+    render_cmd = conda_cmd_base(CondaCommand.RENDER, shared_config) + [recipe_subdir]
+    logger.info(" ".join(render_cmd))
     subprocess_output = subprocess.check_output(
-        render_cmd, env=build_environment, shell=True
+        render_cmd, env=build_environment
     ).decode()
 
     rendered_filenames = [
@@ -511,15 +521,10 @@ def check_already_exists(
     # assuming all packages have the same name
     package_name = c_pkg_names[0].package_name
     logger.info(f"Searching channel: {shared_config['destination-channel']}")
-    search_cmd = (
-        f"conda search --json --full-name --override-channels"
-        f" --channel {shared_config['upload-channel']}"
-        f" {labels_to_search_string(shared_config['upload-channel'], shared_config['labels'])}"
-        f" {package_name}"
-    )
-    logger.info(search_cmd)
+    search_cmd = conda_cmd_base(CondaCommand.SEARCH, shared_config) + [package_name]
+    logger.info(" ".join(search_cmd))
 
-    search_results_text = subprocess.check_output(search_cmd, shell=True).decode()
+    search_results_text = subprocess.check_output(search_cmd).decode()
 
     search_results = json.loads(search_results_text)
 
@@ -549,23 +554,17 @@ def build_recipe(
     build_flags,
     build_environment,
     shared_config,
-    variant_config,
 ):
     """
     Build the recipe.
     """
     logger.info(f"Building {package_name}")
-    build_cmd = (
-        f"conda build {build_flags}"
-        f" {shared_config['source-channel-string']}"
-        f" {recipe_subdir}"
-    )
-    if variant_config is not None:
-        build_cmd = build_cmd + f" -m {variant_config}"
-
-    logger.info(build_cmd)
+    build_cmd = conda_cmd_base(CondaCommand.BUILD, shared_config)
+    build_cmd.extend(build_flags)
+    build_cmd.append(recipe_subdir)
+    logger.info(" ".join(build_cmd))
     try:
-        subprocess.check_call(build_cmd, env=build_environment, shell=True)
+        subprocess.check_call(build_cmd, env=build_environment)
     except subprocess.CalledProcessError as ex:
         sys.exit(f"Failed to build package: {package_name}")
 

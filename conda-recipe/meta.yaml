@@ -22,10 +22,10 @@ build:
     {% endfor %}
 requirements:
   build:
-    - python >=3.6,<3.10
+    - python >=3.6
     - pip
   run:
-    - python >=3.6,<3.10
+    - python >=3.6
     # dependencies are defined in setup.py
     {% for dep in data['install_requires'] %}
     - {{ dep.lower() }}
@@ -40,7 +40,7 @@ test:
     - pytest
     - pytest-mock
   commands:
-    - pytest .
+    - pytest --doctest-modules .
 
 about:
   home: https://github.com/ilastik/publish-conda-stack

@@ -4,9 +4,11 @@ channels:
 dependencies:
   - anaconda-client
   - black
+  - boa
   - bumpversion
   - conda-build
   - conda-verify
+  - mamba
   - mypy
   - pre_commit
   - pytest

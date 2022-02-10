@@ -1,5 +1,6 @@
 import re
 from typing import List, Tuple, Union
+from itertools import chain
 
 
 def labels_to_upload_string(label_list: List[str]) -> str:
@@ -15,19 +16,24 @@ def labels_to_upload_string(label_list: List[str]) -> str:
     return " ".join(f"--label {label}" for label in label_list)
 
 
-def labels_to_search_string(destination_channel: str, label_list: List[str]) -> str:
+def labels_to_search_args(destination_channel: str, label_list: List[str]) -> List[str]:
     """generates a string suitable for conda search
 
     Examples:
 
-    >>> labels_to_search_string('mychannel', ['debug', 'devel'])
-    '--channel mychannel/label/debug --channel mychannel/label/devel'
+    >>> labels_to_search_args('mychannel', ['debug', 'devel'])
+    ['--channel', 'mychannel/label/debug', '--channel', 'mychannel/label/devel']
 
-    >>> labels_to_search_string('mychannel', [])
-    ''
+    >>> labels_to_search_args('mychannel', [])
+    []
     """
-    return " ".join(
-        f"--channel {destination_channel}/label/{label}" for label in label_list
+    return list(
+        chain(
+            *[
+                ("--channel", f"{destination_channel}/label/{label}")
+                for label in label_list
+            ]
+        )
     )
 
 
