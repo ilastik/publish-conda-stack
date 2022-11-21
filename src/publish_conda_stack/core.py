@@ -1,14 +1,6 @@
 #!/usr/bin/env python
 # PYTHON_ARGCOMPLETE_OK
-from . import __version__
-from .util import strip_label, labels_to_upload_string
-from .cmdutil import conda_cmd_base, CondaCommand
-
-from os.path import basename, splitext, abspath, exists, dirname, normpath, isabs
-from pathlib import Path
-from collections import namedtuple
 import argparse
-import conda_build.api
 import datetime
 import json
 import logging
@@ -16,10 +8,18 @@ import os
 import subprocess
 import sys
 import time
+from collections import namedtuple
 from itertools import chain
+from os.path import abspath, basename, dirname, exists, isabs, normpath, splitext
+from pathlib import Path
 from typing import Dict, List, Tuple
+
+import conda_build.api
 import ruamel.yaml as yaml
 
+from . import __version__
+from .cmdutil import CondaCommand, conda_cmd_base
+from .util import labels_to_upload_string, strip_label
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)

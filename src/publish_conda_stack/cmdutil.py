@@ -1,7 +1,7 @@
-from enum import auto, IntEnum
+from enum import IntEnum, auto
 from typing import List
-from .util import labels_to_search_args
 
+from .util import labels_to_search_args
 
 DEFAULT_BACKEND = "conda"
 

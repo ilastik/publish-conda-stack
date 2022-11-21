@@ -1,6 +1,6 @@
 import re
-from typing import List, Tuple, Union
 from itertools import chain
+from typing import List, Tuple, Union
 
 
 def labels_to_upload_string(label_list: List[str]) -> str:
