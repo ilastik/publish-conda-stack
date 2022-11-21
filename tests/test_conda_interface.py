@@ -1,8 +1,10 @@
-from publish_conda_stack.core import upload_package, CCPkgName
-from publish_conda_stack.util import labels_to_upload_string
 import os
-import pytest
 import subprocess
+
+import pytest
+
+from publish_conda_stack.core import CCPkgName, upload_package
+from publish_conda_stack.util import labels_to_upload_string
 
 
 @pytest.mark.parametrize(
