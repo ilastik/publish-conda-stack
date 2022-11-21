@@ -524,7 +524,14 @@ def check_already_exists(
     search_cmd = conda_cmd_base(CondaCommand.SEARCH, shared_config) + [package_name]
     logger.info(" ".join(search_cmd))
 
-    search_results_text = subprocess.check_output(search_cmd).decode()
+    try:
+        search_results_text = subprocess.check_output(search_cmd).decode()
+    except subprocess.CalledProcessError as e:
+        output = e.output.decode()
+        if "following packages are not available from current channels" in output:
+            search_results_text = r"{}"
+        else:
+            raise e
 
     search_results = json.loads(search_results_text)
 
