@@ -1,4 +1,3 @@
-name: pcs-dev
 channels:
   - conda-forge
 dependencies:
