@@ -34,7 +34,6 @@ def test_conda_default(command, minimal_shared_config):
 @pytest.mark.parametrize(
     "command",
     [
-        CondaCommand.RENDER,
         CondaCommand.SEARCH,
         CondaCommand.BUILD,
     ],
@@ -47,6 +46,20 @@ def test_conda_backend_config(command, backend, minimal_shared_config):
         assert cmd_base[0:2] == ["conda", "mambabuild"]
     else:
         assert cmd_base[0] == backend
+
+
+@pytest.mark.parametrize(
+    "backend",
+    [
+        "conda",
+        "mamba",
+    ],
+)
+def test_conda_backend_render_always_conda(backend, minimal_shared_config):
+    command = CondaCommand.RENDER
+    cmd_base = conda_cmd_base(command, minimal_shared_config)
+
+    assert cmd_base[0] == "conda"
 
 
 @pytest.mark.parametrize(
