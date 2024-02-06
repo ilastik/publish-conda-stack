@@ -13,13 +13,13 @@ setup(
     packages=find_packages("./src"),
     include_package_data=True,
     install_requires=[
-        "argcomplete",
         "anaconda-client",
+        "argcomplete",
+        "boa",
         "conda-build>=3.18.10",
         "conda-verify",
-        "ruamel.yaml",
         "mamba",
-        "boa",
+        "ruamel.yaml>=0.15.2",
     ],
     entry_points={
         "console_scripts": ["publish-conda-stack = publish_conda_stack.__main__:main"]
