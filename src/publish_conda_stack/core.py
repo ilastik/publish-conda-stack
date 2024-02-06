@@ -241,7 +241,7 @@ def main():
     print(f"DONE, Result written to {result_file}")
     print("--------")
     print("Summary:")
-    print(yaml.dump(result))
+    yaml.dump(result, sys.stdout)
 
 
 def write_result(result_file_name, result):
