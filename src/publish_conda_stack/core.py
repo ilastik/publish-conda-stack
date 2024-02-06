@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 import conda_build.api
-import ruamel.yaml as yaml
+from ruamel.yaml import YAML
 
 from . import __version__
 from .cmdutil import CondaCommand, conda_cmd_base
@@ -92,9 +92,8 @@ def parse_cmdline_args():
     if ENABLE_TAB_COMPLETION:
 
         def complete_recipe_selection(prefix, action, parser, parsed_args):
-            specs_file_contents = yaml.safe_load(
-                open(parsed_args.recipe_specs_path, "r")
-            )
+            yaml = YAML(typ="safe")
+            specs_file_contents = yaml.load(open(parsed_args.recipe_specs_path, "r"))
             recipe_specs = specs_file_contents["recipe-specs"]
             names = (spec["name"] for spec in recipe_specs)
             return filter(lambda name: name.startswith(prefix), names)
@@ -110,7 +109,8 @@ def parse_cmdline_args():
 def parse_specs(args):
 
     specs_dir = Path(dirname(abspath(args.recipe_specs_path)))
-    specs_file_contents = yaml.safe_load(open(args.recipe_specs_path, "r"))
+    yaml = YAML(typ="safe")
+    specs_file_contents = yaml.load(open(args.recipe_specs_path, "r"))
 
     # Read the 'shared-config' section
     shared_config = specs_file_contents["shared-config"]
@@ -235,17 +235,21 @@ def main():
     result["duration"] = str(end_time - start_time)
     write_result(result_file, result)
 
+    yaml = YAML(typ="safe")
+    yaml.default_flow_style = False
     print("--------")
     print(f"DONE, Result written to {result_file}")
     print("--------")
     print("Summary:")
-    print(yaml.dump(result, default_flow_style=False))
+    print(yaml.dump(result))
 
 
 def write_result(result_file_name, result):
     result["last_updated"] = datetime.datetime.now().isoformat(timespec="seconds")
+    yaml = YAML(typ="safe")
+    yaml.default_flow_style = False
     with open(result_file_name, "w") as f:
-        yaml.dump(result, f, default_flow_style=False)
+        yaml.dump(result, f)
 
 
 def print_recipe_list(recipe_specs):

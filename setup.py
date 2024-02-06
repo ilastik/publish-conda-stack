@@ -17,7 +17,7 @@ setup(
         "anaconda-client",
         "conda-build>=3.18.10",
         "conda-verify",
-        "ruamel.yaml",
+        "ruamel.yaml>=0.15.2",
         "mamba",
         "boa",
     ],
