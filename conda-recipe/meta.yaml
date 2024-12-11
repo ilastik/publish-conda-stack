@@ -21,9 +21,10 @@ build:
     - {{ ep }}
     {% endfor %}
 requirements:
-  build:
+  host:
     - python >=3.9
     - pip
+    - setuptools >40
   run:
     - python >=3.9
     # dependencies are defined in setup.py
