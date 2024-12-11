@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="publish-conda-stack",
-    version="0.5.1",
+    version="0.5.2",
     author="Stuart Berg, Carsten Haubold",
     author_email="team@ilastik.org",
     license="MIT",
@@ -16,7 +16,6 @@ setup(
         "anaconda-client",
         "argcomplete",
         "conda-build>=3.18.10",
-        "conda-verify",
         "ruamel.yaml>=0.15.2",
     ],
     entry_points={
