@@ -45,8 +45,8 @@ Run `conda install anaconda-client`. You need to be logged in to your https://an
 ```yaml
 # common configuration for all packages defined in shared-config:
 shared-config:
-  # backend: new in 0.4, added support for `conda` and `mamba` with `conda` being the default
-  backend: mamba
+  # backend: new in 0.4, only supports `conda` since removal of mamba support
+  backend: conda
   # will translate to --python for every conda-build, deprecated, use pin-file
   python: '3.6'
   # will translate to --numpy for every conda-build, deprecated, use pin-file
@@ -61,6 +61,9 @@ shared-config:
     - conda-forge
   # channel to upload recipes to
   destination-channel: my-personal-channel
+
+  # Choose which package type(s) are outputted. (Accepted inputs .tar.bz2 or 1, .conda or 2)
+  package-format: .conda                      
 ```
 
 #### Package definitions
@@ -119,3 +122,11 @@ MACOSX_DEPLOYMENT_TARGET=10.9 publish-conda-stack my-recipe-specs.yaml
 ```
 
 The `build-recipes.py` script parses the packages from `my-recipe-specs.yaml`, and for each package checks whether an up-to-date version is already available on the `destination-channel` listed in `my-recipe-specs.yaml`.  If the packages don't yet exist in that channel set, it will build the package and upload it.
+
+
+### Changelog
+
+#### 0.6.0
+
+* Added shared config key `package-format` which can be ``.tar.bz2` or `1`, `.conda` or `2`.
+  Default is ``.conda`.
