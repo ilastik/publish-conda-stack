@@ -8,6 +8,7 @@ def minimal_shared_config():
     return {
         "conda-source-channel-list": ["-c", "test-forge"],
         "upload-channel": "test-upload-forge",
+        "package-format": ".conda",
     }
 
 
@@ -25,37 +26,20 @@ def test_conda_default(command, minimal_shared_config):
 
 
 @pytest.mark.parametrize(
-    "backend",
-    [
-        "conda",
-        "mamba",
-    ],
-)
-@pytest.mark.parametrize(
     "command",
     [
         CondaCommand.SEARCH,
         CondaCommand.BUILD,
     ],
 )
-def test_conda_backend_config(command, backend, minimal_shared_config):
-    minimal_shared_config.update({"backend": backend})
+def test_conda_backend_config(command, minimal_shared_config):
+    minimal_shared_config.update({"backend": "conda"})
     cmd_base = conda_cmd_base(command, minimal_shared_config)
-    if command == CondaCommand.BUILD and backend == "mamba":
-        # special case invocation of boa via conda mambabuild
-        assert cmd_base[0:2] == ["conda", "mambabuild"]
-    else:
-        assert cmd_base[0] == backend
+
+    assert cmd_base[0] == "conda"
 
 
-@pytest.mark.parametrize(
-    "backend",
-    [
-        "conda",
-        "mamba",
-    ],
-)
-def test_conda_backend_render_always_conda(backend, minimal_shared_config):
+def test_conda_backend_render_always_conda(minimal_shared_config):
     command = CondaCommand.RENDER
     cmd_base = conda_cmd_base(command, minimal_shared_config)
 
@@ -92,7 +76,10 @@ def test_labels_added_to_search(labels, minimal_shared_config):
                 "test-upload-forge",
             ],
         ),
-        (CondaCommand.BUILD, ["conda", "build", "-c", "test-forge"]),
+        (
+            CondaCommand.BUILD,
+            ["conda", "build", "-c", "test-forge", "--package-format", ".conda"],
+        ),
     ],
 )
 def test_expected_command(command, expected, minimal_shared_config):

@@ -7,30 +7,26 @@ DEFAULT_BACKEND = "conda"
 
 
 class CondaCommand(IntEnum):
-    RENDER: int = auto()
-    SEARCH: int = auto()
-    BUILD: int = auto()
+    RENDER = auto()
+    SEARCH = auto()
+    BUILD = auto()
 
 
 def conda_cmd_base(command: CondaCommand, shared_config: dict) -> List[str]:
     variant_config = shared_config.get("master-conda-build-config", None)
     variant_args = ["-m", variant_config] if variant_config else []
 
-    # render is not supported in mamba, here we must use conda
+    backend = shared_config.get("backend", DEFAULT_BACKEND)
+    if backend not in ["conda"]:
+        raise ValueError(f"Unknown backend: {backend}. Only `conda` is supported.")
+
+    args = [backend]
+
     if command == CondaCommand.RENDER:
-        args = ["conda"]
         args.extend(["render", "--output"])
         args.extend(shared_config["conda-source-channel-list"])
         args.extend(variant_args)
         return args
-
-    backend = shared_config.get("backend", DEFAULT_BACKEND)
-    if backend not in ["conda", "mamba"]:
-        raise ValueError(
-            f"Unknown backend: {backend}. Only `conda` and `mamba` are supported."
-        )
-
-    args = [backend]
 
     if command == CondaCommand.SEARCH:
         labels = shared_config.get("labels", [])
@@ -48,12 +44,10 @@ def conda_cmd_base(command: CondaCommand, shared_config: dict) -> List[str]:
         return args
 
     if command == CondaCommand.BUILD:
-        if backend == "mamba":
-            args = ["conda", "mambabuild"]
-        else:
-            args.extend(["build"])
+        args.extend(["build"])
         args.extend(shared_config["conda-source-channel-list"])
         args.extend(variant_args)
+        args.extend(["--package-format", shared_config["package-format"]])
         return args
 
     raise ValueError(f"unknown command supplied. Got {command}")
