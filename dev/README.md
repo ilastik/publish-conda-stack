@@ -3,10 +3,10 @@
 ## Create a development environment
 
 ```bash
-mamba env create --name pcs-dev --file dev/environment-dev.yml
+conda env create --name pcs-dev --file dev/environment-dev.yml
 ```
 
-This will create an environment with the name `pcs-dev`, that can be activated with `mamba activate pcs-dev`.
+This will create an environment with the name `pcs-dev`, that can be activated with `conda activate pcs-dev`.
 
 ## Automatic versioning with bumpversion
 

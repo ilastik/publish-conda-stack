@@ -15,7 +15,7 @@ setup(
     install_requires=[
         "anaconda-client",
         "argcomplete",
-        "conda-build>=3.18.10",
+        "conda-build>=24.11.0",
         "ruamel.yaml>=0.15.2",
     ],
     entry_points={

@@ -2,12 +2,11 @@ channels:
   - conda-forge
 dependencies:
   - anaconda-client
+  - argcomplete
   - black
-  - boa
   - bumpversion
-  - conda-build
+  - conda-build >=24.11.0
   - conda-verify
-  - mamba
   - mypy
   - pre_commit
   - pytest
