@@ -2,6 +2,8 @@ import re
 from itertools import chain
 from typing import List, Tuple, Union
 
+CONDA_PACKAGE_EXTENSIONS = (".tar.bz2", ".conda")
+
 
 def labels_to_upload_string(label_list: List[str]) -> str:
     """generates a string suitable for anaconda upload
@@ -60,3 +62,19 @@ def strip_label(channel_string: str) -> Tuple[str, Union[str, None]]:
     else:
         label = res.groupdict()["label"]
         return channel_string.split(f"/label/{label}")[0], label
+
+
+def strip_conda_package_ext(file_name: str) -> str:
+    """Remove the conda package extension from package file name
+
+    >>> strip_conda_package_ext("some-fancy-package-1.8.0-bld.tar.bz2")
+    'some-fancy-package-1.8.0-bld'
+    >>> strip_conda_package_ext("some-fancy-package-1.8.0-bld.conda")
+    'some-fancy-package-1.8.0-bld'
+    >>> strip_conda_package_ext("some-fancy-package-1.8.0-bld.nocondaext")
+    'some-fancy-package-1.8.0-bld.nocondaext'
+    """
+    for ext in CONDA_PACKAGE_EXTENSIONS:
+        if file_name.endswith(ext):
+            return file_name.removesuffix(ext)
+    return file_name
