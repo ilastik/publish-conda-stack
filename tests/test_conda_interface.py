@@ -8,9 +8,12 @@ from publish_conda_stack.util import labels_to_upload_string
 
 
 @pytest.mark.parametrize(
+    "package_format", [(".conda",), (".tar.bz2",)], ids=[".conda", ".tar.bz2"]
+)
+@pytest.mark.parametrize(
     "labels,token_string", [(["main"], ""), (["test", "staging"], "-t abc")]
 )
-def test_upload(mocker, labels, token_string):
+def test_upload(mocker, package_format, labels, token_string):
     # Mocking:
     mocker.patch("subprocess.check_call")
     mocker.patch("os.path.exists")
@@ -33,6 +36,7 @@ def test_upload(mocker, labels, token_string):
         "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
+        "package-format": package_format,
     }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
@@ -46,7 +50,7 @@ def test_upload(mocker, labels, token_string):
     test_path = os.path.join(
         build_folder,
         f"{platform}-{arch}",
-        f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2",
+        f"{package_name}-{recipe_version}-{recipe_build_string}{package_format}",
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
@@ -75,6 +79,7 @@ def test_hide_token(mocker):
         "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
+        "package-format": ".conda",
     }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
@@ -83,7 +88,7 @@ def test_hide_token(mocker):
     test_path = os.path.join(
         build_folder,
         f"{platform}-{arch}",
-        f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2",
+        f"{package_name}-{recipe_version}-{recipe_build_string}.conda",
     )
     cmd = f"anaconda {token_string} upload --skip-existing -u {test_channel} {label_string} {test_path}"
 
@@ -132,6 +137,7 @@ def test_upload_channel(mocker):
         "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
+        "package-format": ".conda",
     }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
@@ -146,7 +152,7 @@ def test_upload_channel(mocker):
     test_path = os.path.join(
         build_folder,
         f"{platform}-{arch}",
-        f"{package_name}-{recipe_version}-{recipe_build_string}.tar.bz2",
+        f"{package_name}-{recipe_version}-{recipe_build_string}.conda",
     )
     assert os.path.exists.call_count == 2
     subprocess.check_call.assert_called_once_with(
@@ -155,7 +161,10 @@ def test_upload_channel(mocker):
     )
 
 
-def test_upload_multiple(mocker):
+@pytest.mark.parametrize(
+    "package_format", [(".conda",), (".tar.bz2",)], ids=[".conda", ".tar.bz2"]
+)
+def test_upload_multiple(mocker, package_format):
     # Mocking:
     mocker.patch("subprocess.check_call")
     mocker.patch("os.path.exists")
@@ -183,6 +192,7 @@ def test_upload_multiple(mocker):
         "labels": labels,
         "token-string": token_string,
         "upload-channel": test_channel,
+        "package-format": package_format,
     }
     conda_bld_config = mocker.Mock(
         build_folder=build_folder, platform=platform, arch=arch
@@ -198,7 +208,7 @@ def test_upload_multiple(mocker):
         os.path.join(
             build_folder,
             f"{platform}-{arch}",
-            f"{c_pkg_name.package_name}-{c_pkg_name.version}-{c_pkg_name.build_string}.tar.bz2",
+            f"{c_pkg_name.package_name}-{c_pkg_name.version}-{c_pkg_name.build_string}{package_format}",
         )
         for c_pkg_name in c_pkg_names
     ]

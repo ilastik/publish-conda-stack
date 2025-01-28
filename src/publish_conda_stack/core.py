@@ -19,7 +19,12 @@ from ruamel.yaml import YAML
 
 from . import __version__
 from .cmdutil import CondaCommand, conda_cmd_base
-from .util import labels_to_upload_string, strip_label
+from .util import (
+    CONDA_PACKAGE_EXTENSIONS,
+    labels_to_upload_string,
+    strip_conda_package_ext,
+    strip_label,
+)
 
 logger = logging.getLogger()
 logging.basicConfig(format="%(levelname)s: %(message)s", level=logging.INFO)
@@ -173,6 +178,9 @@ def parse_specs(args):
             f"Backend must be either `conda` or `mamba` - found {shared_config['backend']}"
         )
 
+    if "package-format" not in shared_config:
+        shared_config["package-format"] = ".conda"
+
     logger.info(
         f"Using `{shared_config['backend']}` backend. Can be set in config file under the 'backend' key."
     )
@@ -201,6 +209,7 @@ def main():
     result = {
         "version": __version__,
         "backend": shared_config["backend"],
+        "package-format": shared_config["package-format"],
         "found": [],
         "built": [],
         "errors": [],
@@ -498,10 +507,10 @@ def get_rendered_version(
     ).decode()
 
     rendered_filenames = [
-        x for x in subprocess_output.split() if x.endswith(".tar.bz2")
+        x for x in subprocess_output.split() if x.endswith(CONDA_PACKAGE_EXTENSIONS)
     ]
     name_version_builds = [
-        CCPkgName(*Path(x).name.replace(".tar.bz2", "").rsplit("-", maxsplit=2))
+        CCPkgName(*strip_conda_package_ext(Path(x).name).rsplit("-", maxsplit=2))
         for x in rendered_filenames
     ]
 
@@ -590,7 +599,7 @@ def upload_package(
     """
     package_paths = []
     for c_pkg_name in c_pkg_names:
-        pkg_file_name = f"{c_pkg_name.package_name}-{c_pkg_name.version}-{c_pkg_name.build_string}.tar.bz2"
+        pkg_file_name = f"{c_pkg_name.package_name}-{c_pkg_name.version}-{c_pkg_name.build_string}{shared_config['package-format']}"
         BUILD_PKG_DIR = conda_bld_config.build_folder
         CONDA_PLATFORM = f"{conda_bld_config.platform}-{conda_bld_config.arch}"
         pkg_file_path = os.path.join(BUILD_PKG_DIR, CONDA_PLATFORM, pkg_file_name)

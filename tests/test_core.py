@@ -24,7 +24,7 @@ from publish_conda_stack.core import (
             ),
         ),
         (
-            "/some/path/abc-1.0.0-0py0.tar.bz2\n/some/path/abc-1.0.0-1py2.tar.bz2",
+            "/some/path/abc-1.0.0-0py0.tar.bz2\n/some/path/abc-1.0.0-1py2.conda",
             (
                 CCPkgName(
                     "abc",
@@ -61,7 +61,10 @@ def test_get_rendered_version(mocker, c_package_names, expected):
     subprocess_mock.return_value = c_package_names.encode()
     mocker.patch("subprocess.check_output", new=subprocess_mock)
     res = get_rendered_version(
-        "abc", "mock_path", "bld_env", {"conda-source-channel-list": ["-c", "ignore"]}
+        "abc",
+        "mock_path",
+        "bld_env",
+        {"conda-source-channel-list": ["-c", "ignore"], "package-format": ".conda"},
     )
 
     assert len(res) == len(expected)
@@ -74,7 +77,10 @@ def test_get_rendered_version_hyphen_pkg(mocker):
     subprocess_mock.return_value = "/some/path/a-b-c-1.0.0-0py0.tar.bz2".encode()
     mocker.patch("subprocess.check_output", new=subprocess_mock)
     res = get_rendered_version(
-        "a-b-c", "mock_path", "bld_env", {"conda-source-channel-list": ["-c", "ignore"]}
+        "a-b-c",
+        "mock_path",
+        "bld_env",
+        {"conda-source-channel-list": ["-c", "ignore"], "package-format": ".conda"},
     )
     assert len(res) == 1
     assert res[0].package_name == "a-b-c"
@@ -89,7 +95,7 @@ def test_get_rendered_version_raises(mocker):
             "abc",
             "mock_path",
             "bld_env",
-            {"conda-source-channel-list": ["-c", "ignore"]},
+            {"conda-source-channel-list": ["-c", "ignore"], "package-format": ".conda"},
         )
 
 
@@ -100,7 +106,10 @@ def test_get_rendered_version_ignores_patch_outputs(mocker):
     expected = CCPkgName("abc", "1.0.0", "0py0whatever")
 
     res = get_rendered_version(
-        "abc", "mock_path", "bld_env", {"conda-source-channel-list": ["-c", "ignore"]}
+        "abc",
+        "mock_path",
+        "bld_env",
+        {"conda-source-channel-list": ["-c", "ignore"], "package-format": ".conda"},
     )
 
     assert len(res) == 1
@@ -113,6 +122,7 @@ def test_check_already_exists(mocker):
         "destination-channel": "mock-channel",
         "labels": ["test"],
         "upload-channel": "blah-forge",
+        "package-format": ".conda",
     }
 
     subprocess_mock = mocker.Mock()
@@ -160,6 +170,7 @@ def test_check_already_exists_doesnt_add(mocker):
         "destination-channel": "mock-channel",
         "labels": ["test"],
         "upload-channel": "blah-forge",
+        "package-format": ".conda",
     }
 
     subprocess_mock = mocker.Mock()
@@ -213,6 +224,7 @@ def test_check_already_exists_not_found(mocker):
         "destination-channel": "mock-channel",
         "labels": ["test"],
         "upload-channel": "blah-forge",
+        "package-format": ".conda",
     }
 
     output = dedent(
