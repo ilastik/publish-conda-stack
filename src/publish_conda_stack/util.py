@@ -55,7 +55,7 @@ def strip_label(channel_string: str) -> Tuple[str, Union[str, None]]:
     >>> strip_label("some-channel")
     ('some-channel', None)
     """
-    regex = re.compile("/label/" + "(?P<label>[a-zA-Z0-9\-]+)" + "\Z")
+    regex = re.compile("/label/" + r"(?P<label>[a-zA-Z0-9\-]+)" + r"\Z")
     res = regex.search(channel_string)
     if res is None:
         return channel_string, None
